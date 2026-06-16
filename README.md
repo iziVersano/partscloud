@@ -16,16 +16,15 @@ docker compose up
 ```
 
 ```
-                docker compose up
-                       │
-        ┌──────────────┴──────────────┐
-        ▼                              ▼
-┌───────────────────┐        ┌───────────────────┐
-│  backend (Django)  │        │  frontend (Vue)    │
-│  :8000              │◄──────│  :5173, proxies    │
-│  migrate → seed CSV │  API  │  /api → backend     │
-│  → serve API        │       └───────────────────┘
-└───────────────────┘
+             docker compose up
+           |                       |
+           +-----------------------+
+           v                       v
++--------------------+    +----------------+
+|  backend (Django)  |    | frontend (Vue) |
+|       :8000        | <--|     :5173      |
+| migrate + seed CSV |    |  proxies /api  |
++--------------------+    +----------------+
 ```
 
 | Service | URL |
@@ -59,7 +58,7 @@ endpoints, against an in-memory DB.
 ## How I defined "at risk"
 
 ```
-projected = on_hand - (avg_daily_demand × lead_time_days)
+projected = on_hand - (avg_daily_demand x lead_time_days)
 ```
 
 Units left when the next delivery arrives, at normal selling pace:
@@ -74,16 +73,16 @@ I flag at the safety-stock line, not zero — the buffer only helps if
 there's still lead time left to react when you breach it.
 
 ```
-avg_daily_demand == 0 ? ──yes──► OK (can't stock out)
-            │ no
-            ▼
-projected = on_hand − (avg_daily_demand × lead_time_days)
-            │
-    ┌───────┼────────────┐
-    ▼       ▼             ▼
-projected<0 projected<safety  else
-    │       │             │
- CRITICAL WARNING        OK
+             avg_daily_demand == 0?
+ yes --> OK (treated as safe, can't stock out)
+                       no
+                       v
+projected = on_hand - (demand x lead_time_days)
+                       |
+      +---------------------+----------------+
+      v                     v                v
+projected < 0   projected < safety_stock   else
+   CRITICAL             WARNING             OK
 ```
 
 Two tested edge cases: zero demand (would divide by zero — treated as
@@ -102,7 +101,7 @@ to be asked to change live, so it's isolated and unit-testable in
 seconds, not tangled into a view.
 
 ```
-views.py (thin) → services/ (the logic) → repositories/ (only ORM contact) → SQLite
+views.py (thin) -> services/ (the logic) -> repositories/ (only ORM contact) -> SQLite
 ```
 
 **Frontend:** feature-based, not type-based — `features/inventory/`
@@ -111,8 +110,8 @@ a sibling folder, not files scattered into shared ones.
 
 ```
 src/
-├── router/, shared/components/, shared/composables/   ← empty, reserved
-└── features/inventory/  → components/, api/, store/
+|-- router/, shared/components/, shared/composables/   (empty, reserved)
+`-- features/inventory/  -> components/, api/, store/
 ```
 
 Not required at 50 rows — I'd happily explain a flatter version. I'd
