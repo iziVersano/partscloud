@@ -1,0 +1,12 @@
+{
+  "name": "PartsCloud",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": { "label": "API" },
+    "5173": { "label": "UI" }
+  }
+}

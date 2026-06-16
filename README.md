@@ -32,6 +32,10 @@ to install or configure first.
 - API: http://localhost:8000/api/v1/skus
 - UI: http://localhost:5173
 
+No Docker locally? Open this repo in **GitHub Codespaces** (Code →
+Codespaces → Create codespace on main) — Docker is preconfigured via
+`.devcontainer/`, and the same `docker compose up` works there.
+
 On first boot, `migrate` creates the schema and loads the CSV into
 SQLite as a data migration — no separate seed step. Migrations only
 run once, so restarting the containers won't duplicate rows.
