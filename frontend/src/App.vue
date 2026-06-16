@@ -28,6 +28,7 @@ onMounted(() => {
       <p v-if="store.actionError" class="action-error">{{ store.actionError }}</p>
       <FilterBar />
       <BulkActionBar />
+      <Pagination />
       <PartsTable />
       <Pagination />
     </template>
