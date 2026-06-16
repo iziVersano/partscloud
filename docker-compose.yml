@@ -31,3 +31,5 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=partscloud.settings.test
     command: python manage.py test apps.inventory --settings=partscloud.settings.test
+    depends_on:
+      - backend
