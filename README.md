@@ -153,6 +153,18 @@ explaining a flatter version. I chose it because it's what I'd reach
 for the moment a second feature or a second developer showed up, and
 it cost nothing extra to set up correctly from the start.
 
+## Error handling
+
+Catch specific, expected failures and return a clear 4xx a frontend
+can show — anything else surfaces as a real 500 instead of being
+silently mapped to the wrong status. Concretely: `ordering` and `risk`
+query params are validated against an allowlist (an unknown field name
+used to crash the ORM with a raw 500 — now a 400); unknown SKU is
+caught as `SKU.DoesNotExist` specifically, not a blanket `except
+Exception` that would mask real bugs as a fake 404; bulk actions report
+any SKUs that didn't exist and were skipped, rather than failing or
+going silent.
+
 ## What I chose not to build
 
 - **Order quantities** — the brief asks "is this at risk," not "how
@@ -172,3 +184,29 @@ it cost nothing extra to set up correctly from the start.
 Postgres + background risk recomputation if `on_hand` changes outside
 the seed step; an actual order-quantity suggestion once a replenishment
 policy exists; frontend tests; a real design pass on the UI.
+
+## Requirements checklist
+
+**Backend (Django)**
+- [x] Load the CSV into a database — `migrations/0002_seed_inventory.py`
+- [x] Compute a stockout risk per SKU from `on_hand`, `avg_daily_demand`,
+      `lead_time_days`, `safety_stock` — `services/risk.py`
+- [x] Endpoint to retrieve SKUs with risk classification — `GET /skus`
+- [x] Accept/decline a suggestion, single and bulk —
+      `POST /skus/<id>/action`, `POST /skus/actions`
+
+**Frontend (Vue)**
+- [x] Calls the backend, shows risk indicator — `PartsTable.vue` +
+      `RiskBadge.vue`
+- [x] Filter or sort — `FilterBar.vue` + sortable table headers
+- [x] Accept/decline per SKU or on a selection — per-row buttons +
+      `BulkActionBar.vue`
+
+**Run it with one command**
+- [x] `docker compose up` — local or in a Codespace (`.devcontainer/`)
+
+**README**
+- [x] How to run it
+- [x] How "at risk" is defined, and why
+- [x] What I chose not to build, and why
+- [x] What I'd do differently with more time
