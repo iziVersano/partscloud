@@ -45,6 +45,15 @@ duplicate rows.
 2. In the terminal that opens: `docker compose up`
 3. Click the **port 5173** notification/link to open the UI
 
+## Tests
+
+```
+docker compose exec backend python manage.py test apps.inventory --settings=partscloud.settings.test
+```
+
+23 tests — risk function (including both edge cases) and all three API
+endpoints, against an in-memory DB.
+
 ---
 
 ## How I defined "at risk"
