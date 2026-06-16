@@ -67,6 +67,10 @@ export const useInventoryStore = defineStore("inventory", {
     setRiskFilter(risk) {
       this.riskFilter = risk;
       this.page = 1; // avoid landing on an empty page after filtering
+      this.clearSelection(); // don't carry hidden selections into a
+      // different filter — a bulk action should only ever touch rows
+      // the user can currently see, not ones selected under a filter
+      // they've since switched away from
     },
 
     setSort(field) {
