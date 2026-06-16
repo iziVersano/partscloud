@@ -96,10 +96,10 @@ recalculated per request.
 ## Why this structure
 
 **Backend:** `repositories/` (DB access) → `services/` (risk +
-accept/decline logic, plain functions, no Django) → `api/` (thin
-views). The risk formula is what I most expect to be asked to change
-live, so it's isolated and unit-testable in seconds, not tangled into
-a view.
+accept/decline logic — plain functions, no ORM or HTTP inside them) →
+`api/` (thin Django/DRF views). The risk formula is what I most expect
+to be asked to change live, so it's isolated and unit-testable in
+seconds, not tangled into a view.
 
 ```
 views.py (thin) → services/ (the logic) → repositories/ (only ORM contact) → SQLite
