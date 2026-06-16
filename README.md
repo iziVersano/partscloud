@@ -25,9 +25,14 @@ docker compose up
 - API: http://localhost:8000/api/v1/skus
 - UI: http://localhost:5173
 
-No Docker locally? Open in **GitHub Codespaces** (Code → Codespaces →
-Create codespace on main) — Docker comes preconfigured via
-`.devcontainer/`.
+No Docker locally? Use **GitHub Codespaces** instead — Docker comes
+preconfigured via `.devcontainer/`, no local setup needed:
+
+1. On the repo page, click **Code** → **Codespaces** tab → **Create
+   codespace on main**
+2. Wait for it to build (sets up Docker automatically)
+3. In the terminal that opens: `docker compose up`
+4. Click the **port 5173** notification/link to open the UI
 
 `migrate` creates the schema and seeds the CSV in one step on first
 boot. It's a data migration, so it only runs once — restarting won't
