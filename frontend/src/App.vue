@@ -3,6 +3,7 @@ import { onMounted } from "vue";
 import { useInventoryStore } from "./features/inventory/store/inventoryStore";
 import PartsTable from "./features/inventory/components/PartsTable.vue";
 import FilterBar from "./features/inventory/components/FilterBar.vue";
+import BulkActionBar from "./features/inventory/components/BulkActionBar.vue";
 
 const store = useInventoryStore();
 
@@ -18,6 +19,7 @@ onMounted(() => {
     <p v-else-if="store.error">Failed to load: {{ store.error }}</p>
     <template v-else>
       <FilterBar />
+      <BulkActionBar />
       <PartsTable />
     </template>
   </main>

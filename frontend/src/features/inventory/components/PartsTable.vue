@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useInventoryStore } from "../store/inventoryStore";
 import RiskBadge from "./RiskBadge.vue";
 
@@ -28,13 +29,28 @@ function decline(sku) {
 function sortBy(field) {
   store.setSort(field);
 }
+
+const allVisibleSelected = computed(() =>
+  store.visibleSkus.length > 0 &&
+  store.visibleSkus.every((row) => store.selected.has(row.sku))
+);
+
+function toggleSelectAll() {
+  if (allVisibleSelected.value) {
+    store.visibleSkus.forEach((row) => store.selected.delete(row.sku));
+  } else {
+    store.visibleSkus.forEach((row) => store.selected.add(row.sku));
+  }
+}
 </script>
 
 <template>
   <table class="parts-table">
     <thead>
       <tr>
-        <th></th>
+        <th>
+          <input type="checkbox" :checked="allVisibleSelected" @change="toggleSelectAll" />
+        </th>
         <th v-for="col in columns" :key="col.field" @click="sortBy(col.field)" class="sortable">
           {{ col.label }}
           <span v-if="store.sortField === col.field">{{ store.sortDir === "asc" ? "▲" : "▼" }}</span>
