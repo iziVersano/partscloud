@@ -1,112 +1,84 @@
 # PartsCloud — Stockout Risk Tracker
 
-A small service that flags spare-part SKUs at risk of running out before
-the next delivery, and lets a planner accept or decline the suggestion
-per SKU or in bulk.
+Flags spare-part SKUs at risk of running out before the next delivery,
+and lets a planner accept or decline the suggestion per SKU or in bulk.
 
-## How to run it
+## Run it
 
 ```
 docker compose up
 ```
 
-- Backend (Django + DRF): http://localhost:8000/api/v1/skus
-- Frontend (Vue): http://localhost:5173
+- API: http://localhost:8000/api/v1/skus
+- UI: http://localhost:5173
 
-On first boot, Django's `migrate` command creates the schema and loads
-`spare_parts_inventory.csv` into SQLite as part of a data migration.
-Migrations are idempotent, so restarting the containers does not
-re-seed or duplicate rows.
-
-No separate setup step is needed — the CSV → DB load is part of
-`migrate`, which the backend container runs automatically before
-starting the server.
+On first boot, `migrate` creates the schema and loads the CSV into
+SQLite as a data migration — no separate seed step. Migrations only
+run once, so restarting the containers won't duplicate rows.
 
 ## How I defined "at risk"
-
-For each SKU, I project stock forward across its own lead time:
 
 ```
 projected = on_hand - (avg_daily_demand × lead_time_days)
 ```
 
-This is "how many units will be left when the next delivery actually
-arrives, if I keep selling at my normal rate." I classify against two
-lines, not one:
+That's: how many units are left when the next delivery actually
+arrives, at normal selling pace. I flag against two lines:
 
-- `projected < 0` → **critical** — an actual stockout before resupply.
-- `0 ≤ projected < safety_stock` → **warning** — survives, but eats into
-  the buffer the customer explicitly set aside for demand spikes or late
-  deliveries.
-- `projected ≥ safety_stock` → **ok**.
+- `projected < 0` → **critical** — runs out before resupply.
+- `projected < safety_stock` → **warning** — survives, but eats into
+  the buffer the customer set aside for spikes or late deliveries.
+- otherwise → **ok**.
 
-I flag at the safety-stock line rather than waiting for zero because the
-buffer only protects you if you still have lead time left to react when
-you breach it — alarming at zero means the 10+ day wait has already
-started with no margin.
+I flag at the safety-stock line, not zero, because the buffer only
+helps if there's still lead time left to react when you breach it —
+waiting for zero means the wait has already started with no margin.
 
-Two edge cases the data deliberately includes:
-- `avg_daily_demand == 0` (SP-1002) — a naive day-of-cover calculation
-  divides by zero or returns "always critical." I treat zero demand as
-  inherently safe.
-- `safety_stock == 0` (several SKUs) — the warning band collapses, so
-  only an actual projected stockout flags. That's intentional, not a bug.
+Two edge cases the data plants: zero demand (divides by zero in a naive
+calc — treated as safe, since it can't stock out) and zero safety stock
+(the warning band collapses, so only an actual stockout flags — correct,
+not a bug). Both are tested.
 
-I also compute a `risk_score` (`projected - safety_stock`) alongside the
-label, so severity can be sorted/ranked rather than just bucketed.
+Risk is computed once at seed time and stored, not recalculated per
+request — it only depends on data that doesn't change in this scope.
 
-Both fields are computed **once**, in the seed migration — not
-recalculated on every API request — since they only depend on data
-that doesn't change after seeding in this scope.
+## Why this structure
 
-## Architecture
+I split the backend into `repositories/` (DB access), `services/`
+(risk + accept/decline logic), and `api/` (thin views that just call
+a service and return). 50 rows doesn't need this — the reason I did it
+anyway is the risk formula is the one thing I most expect to be asked
+to change live, and with it isolated from Django/HTTP it's a plain
+function I can edit and re-test in seconds, not something tangled into
+a view. Settings are split by environment for the same instinct: cheap
+to set up now, saves a rewrite if this ever needs Postgres.
 
-Backend follows a thin-views / fat-services split with a repository
-layer between services and the ORM:
+Frontend is organized by feature (`features/inventory/` holds its own
+components, API calls, and store) rather than by file type, so a
+second feature wouldn't mean spreading new files across existing
+folders.
 
-```
-apps/inventory/
-  models.py        SKU table
-  repositories/     all direct DB access
-  services/         risk.py (the formula), actions.py (accept/decline)
-  api/v1/           HTTP layer only — parses requests, calls services
-  migrations/        schema + the CSV seed
-```
-
-This isn't necessary at 50 rows, but it means the risk logic and the
-accept/decline logic are unit-testable without HTTP, and a future second
-domain (e.g. suppliers) becomes a new app under `apps/` rather than more
-files crammed into this one. Settings are split by environment
-(`base/dev/prod/test`) for the same reason — `prod.py` isn't wired up
-anywhere yet, but the seam exists.
-
-Frontend is feature-based rather than type-based: everything about the
-inventory feature (components, API client, Pinia store) lives under
-`features/inventory/`, so a second feature wouldn't mean reorganizing
-existing folders.
+None of this is required for a 50-row task — I'd be just as happy
+explaining a flatter version. I chose it because it's what I'd reach
+for the moment a second feature or a second developer showed up, and
+it cost nothing extra to set up correctly from the start.
 
 ## What I chose not to build
 
-- **Order quantities.** The brief asks "is this at risk," not "how much
-  should we reorder" — that needs a max-stock or EOQ policy the data
-  doesn't provide, so I stopped at flagging risk.
-- **Caching.** 50 rows and a subtraction is not a performance problem.
-  I'd only add it if this were serving thousands of SKUs to many
-  concurrent planners.
-- **Frontend tests.** Backend has unit tests on the risk function
+- **Order quantities** — the brief asks "is this at risk," not "how
+  much to reorder." That needs a max-stock/EOQ policy the data doesn't
+  give me.
+- **Caching** — not a real problem at this scale; I'd add it with
+  thousands of SKUs and concurrent planners.
+- **Frontend tests** — backend has unit tests on the risk function
   (including both edge cases) and integration tests on all three
-  endpoints. Vue component testing needs a Jest/Vitest setup that felt
-  out of scope for the time box.
-- **Auth.** Anyone with the URL can accept/decline. Fine for a take-home,
-  not for production.
+  endpoints; Vue testing needed a setup step I didn't think was worth
+  the time box.
+- **Auth** — anyone with the URL can accept/decline. Fine here, not in
+  production.
 
-## What I'd do differently with more time
+## With more time
 
-- Swap SQLite for PostgreSQL and move risk computation to a background
-  job if SKU volume grew — currently it's computed once at seed time,
-  which is fine at this scale but wouldn't refresh if `on_hand` changed
-  via some other process.
-- Add the missing piece for a real workflow: an order-quantity
-  suggestion, once a replenishment policy is defined.
-- Frontend tests, and a proper design pass on the UI — it's functional,
-  not polished, by design given the time box.
+Postgres + background risk recomputation if `on_hand` changes outside
+the seed step; an actual order-quantity suggestion once a replenishment
+policy exists; frontend tests; a real design pass on the UI.
