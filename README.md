@@ -94,10 +94,46 @@ function I can edit and re-test in seconds, not something tangled into
 a view. Settings are split by environment for the same instinct: cheap
 to set up now, saves a rewrite if this ever needs Postgres.
 
+```
+HTTP request
+     │
+     ▼
+┌─────────────┐   thin — just parses
+│  api/v1/    │   the request and
+│  views.py   │   serializes the reply
+└─────┬───────┘
+      ▼
+┌─────────────┐   the actual logic —
+│  services/  │   risk.py, actions.py
+│             │   plain functions, unit
+│             │   testable with no HTTP
+└─────┬───────┘
+      ▼
+┌─────────────┐   only file that talks
+│ repositories│   to the Django ORM
+└─────┬───────┘
+      ▼
+   SQLite (Postgres later = one file changes)
+```
+
 Frontend is organized by feature (`features/inventory/` holds its own
 components, API calls, and store) rather than by file type, so a
 second feature wouldn't mean spreading new files across existing
 folders.
+
+```
+src/
+├── App.vue
+└── features/
+    └── inventory/          ← everything about this feature, together
+        ├── components/      PartsTable, RiskBadge, FilterBar,
+        │                     BulkActionBar
+        ├── api/              inventoryApi.js (all fetch calls)
+        └── store/            inventoryStore.js (Pinia state)
+
+A second feature (e.g. "suppliers") would be a sibling folder here,
+not new files scattered into the same components/api/store.
+```
 
 None of this is required for a 50-row task — I'd be just as happy
 explaining a flatter version. I chose it because it's what I'd reach
