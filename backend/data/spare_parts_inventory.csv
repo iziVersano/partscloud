@@ -1,0 +1,51 @@
+sku,name,category,on_hand,avg_daily_demand,lead_time_days,safety_stock,unit_cost_eur,last_delivery_date
+SP-1001,"Hydraulic seal kit, 50mm",Seals,62,1.14,14,5,41.73,2026-03-10
+SP-1002,Bearing 6205-2RS,Bearings,179,0.0,41,0,25.57,2025-09-16
+SP-1003,V-belt A-section 1200mm,Belts,21,0.87,26,10,180.42,2026-02-16
+SP-1004,Pneumatic cylinder 32x100,Pneumatics,279,0.92,7,13,137.07,2026-04-16
+SP-1005,Pressure gauge 0-10 bar,Instrumentation,192,0.32,17,1,20.19,2026-04-02
+SP-1006,Solenoid valve 24V DC,Valves,226,0.95,8,4,131.89,2026-03-23
+SP-1007,"Coupling element, rubber",Couplings,1,0.34,38,4,672.05,2025-11-30
+SP-1008,Drive chain 12B-1 pitch,Chains,4,0.92,28,6,194.4,2026-03-27
+SP-1009,"Motor brush set, 8mm",Motor parts,157,6.22,16,37,8.97,2026-04-17
+SP-1010,"Filter cartridge, 10 micron",Filters,58,0.03,24,0,271.73,2025-06-30
+SP-1011,"O-ring NBR 70 shore, 40mm",Seals,188,1.49,27,19,124.49,2026-04-12
+SP-1012,Bearing 6308-ZZ,Bearings,78,0.42,8,3,145.3,2026-04-01
+SP-1013,Timing belt HTD-5M 800mm,Belts,20,3.17,34,29,57.09,2026-03-01
+SP-1014,Ball valve 1/2 inch brass,Valves,177,5.14,9,57,13.08,2026-04-11
+SP-1015,"Limit switch, roller lever",Sensors,349,0.7,25,4,73.09,2026-04-12
+SP-1016,Proximity sensor M18 inductive,Sensors,96,1.16,10,15,29.21,2026-04-16
+SP-1017,Pneumatic fitting 6mm push-in,Pneumatics,82,0.64,26,4,179.31,2026-03-24
+SP-1018,Gear pump 5cc displacement,Pumps,0,1.42,27,10,561.28,2025-10-16
+SP-1019,"Encoder, 1024 PPR incremental",Sensors,127,0.01,41,0,87.5,2025-11-01
+SP-1020,Cooling fan 120mm 24V,Cooling,127,11.78,10,153,25.88,2026-04-25
+SP-1021,Heating element 1000W,Heating,377,0.81,13,4,29.21,2026-03-09
+SP-1022,Thermocouple Type K 2m,Instrumentation,321,1.39,26,6,59.7,2026-04-25
+SP-1023,Contactor 25A 3-pole,Electrical,138,5.92,12,24,44.02,2026-04-26
+SP-1024,Circuit breaker C16 3P,Electrical,57,0.05,48,1,385.26,2025-08-29
+SP-1025,Fuse 10A glass cartridge,Electrical,331,0.33,23,2,157.29,2026-03-30
+SP-1026,Cable gland M20 IP68,Electrical,111,9.7,17,97,49.76,2026-04-17
+SP-1027,Relay 24V DC 8-pin socket,Electrical,175,4.97,12,60,4.14,2026-04-28
+SP-1028,Lubricant grease cartridge 400g,Consumables,351,0.41,9,2,128.0,2026-04-23
+SP-1029,Hydraulic hose 1/4 inch 1m,Hoses,3,3.12,18,41,130.97,2026-03-15
+SP-1030,Compressed air hose 8mm 10m,Hoses,326,0.29,25,3,104.57,2026-04-11
+SP-1031,Flange gasket DN50 PN16,Seals,108,4.75,18,48,18.36,2026-04-15
+SP-1032,Bolt M10x40 stainless A2,Fasteners,73,9.39,8,38,3.97,2026-04-18
+SP-1033,Nut M10 stainless A2,Fasteners,8,2.25,22,22,108.36,2026-03-15
+SP-1034,Washer M10 stainless A2,Fasteners,4,2.0,20,6,17.39,2026-02-26
+SP-1035,Drive shaft coupling 25mm,Couplings,0,0.5,51,2,411.02,2025-11-20
+SP-1036,Roller bearing tapered 30mm,Bearings,2,3.46,30,35,232.0,2026-02-10
+SP-1037,Belt tensioner pulley,Belts,334,1.03,22,6,29.55,2026-04-08
+SP-1038,Servo motor cable 5m shielded,Cables,2,1.52,23,5,610.98,2026-02-16
+SP-1039,Power supply 24V 10A DIN,Electrical,307,1.39,23,6,30.02,2026-03-25
+SP-1040,Emergency stop button red,Electrical,77,8.76,12,53,20.79,2026-04-10
+SP-1041,PLC input module 16 channels,Automation,70,0.97,20,11,119.01,2026-03-21
+SP-1042,Touchscreen HMI 7 inch,Automation,183,0.39,29,4,57.92,2026-04-10
+SP-1043,Industrial PC fan filter,Cooling,22,1.61,34,6,232.61,2026-02-01
+SP-1044,Conveyor roller 50mm dia,Mechanical,21,3.5,20,38,22.95,2026-03-19
+SP-1045,Bushing bronze 20x30x20,Mechanical,228,1.33,14,13,67.78,2026-04-16
+SP-1046,Spring compression 5x40mm,Mechanical,137,8.89,21,62,1.38,2026-04-11
+SP-1047,Ball screw assembly 16mm,Mechanical,86,11.51,9,161,13.96,2026-04-25
+SP-1048,Linear guide rail 500mm,Mechanical,189,0.49,13,6,129.73,2026-04-13
+SP-1049,Pneumatic regulator 0-10 bar,Pneumatics,185,0.81,15,2,163.15,2026-03-03
+SP-1050,Inverter 2.2kW 400V 3-phase,Drives,15,3.04,16,15,5.87,2026-02-11
