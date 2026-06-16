@@ -2,6 +2,7 @@
 import { onMounted } from "vue";
 import { useInventoryStore } from "./features/inventory/store/inventoryStore";
 import PartsTable from "./features/inventory/components/PartsTable.vue";
+import FilterBar from "./features/inventory/components/FilterBar.vue";
 
 const store = useInventoryStore();
 
@@ -15,7 +16,10 @@ onMounted(() => {
     <h1>PartsCloud — Stockout Risk</h1>
     <p v-if="store.loading">Loading…</p>
     <p v-else-if="store.error">Failed to load: {{ store.error }}</p>
-    <PartsTable v-else />
+    <template v-else>
+      <FilterBar />
+      <PartsTable />
+    </template>
   </main>
 </template>
 

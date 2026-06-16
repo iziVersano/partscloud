@@ -4,6 +4,15 @@ import RiskBadge from "./RiskBadge.vue";
 
 const store = useInventoryStore();
 
+const columns = [
+  { label: "SKU", field: "sku" },
+  { label: "Name", field: "name" },
+  { label: "Category", field: "category" },
+  { label: "On hand", field: "on_hand" },
+  { label: "Risk", field: "risk_score" },
+  { label: "Status", field: "action_status" },
+];
+
 function onCheckboxChange(sku) {
   store.toggleSelected(sku);
 }
@@ -15,6 +24,10 @@ function accept(sku) {
 function decline(sku) {
   store.act(sku, "declined");
 }
+
+function sortBy(field) {
+  store.setSort(field);
+}
 </script>
 
 <template>
@@ -22,12 +35,10 @@ function decline(sku) {
     <thead>
       <tr>
         <th></th>
-        <th>SKU</th>
-        <th>Name</th>
-        <th>Category</th>
-        <th>On hand</th>
-        <th>Risk</th>
-        <th>Status</th>
+        <th v-for="col in columns" :key="col.field" @click="sortBy(col.field)" class="sortable">
+          {{ col.label }}
+          <span v-if="store.sortField === col.field">{{ store.sortDir === "asc" ? "▲" : "▼" }}</span>
+        </th>
         <th>Action</th>
       </tr>
     </thead>
@@ -69,6 +80,10 @@ function decline(sku) {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #e5e5e5;
   text-align: left;
+}
+.parts-table th.sortable {
+  cursor: pointer;
+  user-select: none;
 }
 .parts-table button {
   margin-right: 0.4rem;

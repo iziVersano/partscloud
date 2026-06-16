@@ -11,13 +11,26 @@ export const useInventoryStore = defineStore("inventory", {
     loading: false,
     error: null,
     riskFilter: null, // null | 'critical' | 'warning' | 'ok'
+    sortField: "risk_score",
+    sortDir: "asc", // 'asc' | 'desc'
     selected: new Set(),
   }),
 
   getters: {
     visibleSkus(state) {
-      if (!state.riskFilter) return state.skus;
-      return state.skus.filter((s) => s.risk === state.riskFilter);
+      let result = state.riskFilter
+        ? state.skus.filter((s) => s.risk === state.riskFilter)
+        : state.skus;
+
+      const field = state.sortField;
+      const dir = state.sortDir === "desc" ? -1 : 1;
+      result = [...result].sort((a, b) => {
+        if (a[field] < b[field]) return -1 * dir;
+        if (a[field] > b[field]) return 1 * dir;
+        return 0;
+      });
+
+      return result;
     },
     selectedCount(state) {
       return state.selected.size;
@@ -39,6 +52,15 @@ export const useInventoryStore = defineStore("inventory", {
 
     setRiskFilter(risk) {
       this.riskFilter = risk;
+    },
+
+    setSort(field) {
+      if (this.sortField === field) {
+        this.sortDir = this.sortDir === "asc" ? "desc" : "asc";
+      } else {
+        this.sortField = field;
+        this.sortDir = "asc";
+      }
     },
 
     toggleSelected(sku) {
