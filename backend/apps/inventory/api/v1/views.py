@@ -93,10 +93,15 @@ def bulk_update_sku_action(request):
     except InvalidActionError as exc:
         return Response({"detail": str(exc)}, status=400)
 
+    # Compare against the count of *distinct* SKUs requested, not the raw
+    # list length — Django's .update() returns distinct rows matched, so
+    # a duplicate SKU in the request (e.g. a double-click sending the same
+    # id twice) would otherwise be misreported as "skipped".
+    distinct_requested = len(set(sku_ids))
     response = {"updated": updated_count}
-    if updated_count < len(sku_ids):
+    if updated_count < distinct_requested:
         response["detail"] = (
-            f"{len(sku_ids) - updated_count} of {len(sku_ids)} SKUs "
+            f"{distinct_requested - updated_count} of {distinct_requested} SKUs "
             "were not found and were skipped"
         )
     return Response(response)

@@ -157,3 +157,24 @@ class BulkActionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(body["updated"], 1)
         self.assertIn("detail", body)
+
+    def test_duplicate_sku_in_request_is_not_reported_as_skipped(self):
+        # Regression test: Django's .update() returns the count of
+        # distinct rows matched, not the number of entries in the
+        # request list. A duplicate SKU id in the same bulk request
+        # (e.g. a double-click sending the same id twice) must not be
+        # misreported as "skipped".
+        make_sku(sku="SP-A")
+
+        response = self.client.post(
+            "/api/v1/skus/actions",
+            data=json.dumps(
+                {"skus": ["SP-A", "SP-A"], "action": "accepted"}
+            ),
+            content_type="application/json",
+        )
+
+        body = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body["updated"], 1)
+        self.assertNotIn("detail", body)
