@@ -23,3 +23,11 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+  tests:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=partscloud.settings.test
+    command: python manage.py test apps.inventory --settings=partscloud.settings.test

@@ -44,11 +44,14 @@ duplicate rows.
 2. In the terminal that opens: `docker compose up`
 3. Click the **port 5173** notification/link to open the UI
 
-## Running tests (optional — not required to use the app)
+## Tests
 
-`docker compose up` is the only command needed to run PartsCloud. This
-is just for verifying the test suite yourself, while the app is
-already running:
+`docker compose up` runs the test suite automatically, in its own
+`tests` container — no separate command needed. You'll see its output
+in the logs alongside the backend and frontend; it exits once done and
+doesn't affect the running app either way.
+
+To re-run them on demand without restarting everything:
 
 ```
 docker compose exec backend python manage.py test apps.inventory --settings=partscloud.settings.test
