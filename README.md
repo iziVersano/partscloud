@@ -47,9 +47,11 @@ duplicate rows.
 ## Tests
 
 `docker compose up` runs the test suite automatically, in its own
-`tests` container — no separate command needed. You'll see its output
-in the logs alongside the backend and frontend; it exits once done and
-doesn't affect the running app either way.
+`tests` container — no separate command needed. It starts once the
+backend container is up and exits when done (usually within a second,
+since it's just 23 tests against an in-memory DB); its output appears
+in the logs alongside backend and frontend, and it doesn't block or
+affect the running app either way.
 
 To re-run them on demand without restarting everything:
 
