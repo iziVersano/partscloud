@@ -5,15 +5,19 @@ import {
   bulkUpdateSkuAction,
 } from "../api/inventoryApi";
 
+const PAGE_SIZE = 20;
+
 export const useInventoryStore = defineStore("inventory", {
   state: () => ({
     skus: [],
     loading: false,
     error: null,
+    actionError: null,
     riskFilter: null, // null | 'critical' | 'warning' | 'ok'
     sortField: "risk_score",
     sortDir: "asc", // 'asc' | 'desc'
     selected: new Set(),
+    page: 1,
   }),
 
   getters: {
@@ -32,6 +36,16 @@ export const useInventoryStore = defineStore("inventory", {
 
       return result;
     },
+
+    totalPages(state) {
+      return Math.max(1, Math.ceil(this.visibleSkus.length / PAGE_SIZE));
+    },
+
+    paginatedSkus(state) {
+      const start = (state.page - 1) * PAGE_SIZE;
+      return this.visibleSkus.slice(start, start + PAGE_SIZE);
+    },
+
     selectedCount(state) {
       return state.selected.size;
     },
@@ -52,6 +66,7 @@ export const useInventoryStore = defineStore("inventory", {
 
     setRiskFilter(risk) {
       this.riskFilter = risk;
+      this.page = 1; // avoid landing on an empty page after filtering
     },
 
     setSort(field) {
@@ -61,6 +76,10 @@ export const useInventoryStore = defineStore("inventory", {
         this.sortField = field;
         this.sortDir = "asc";
       }
+    },
+
+    setPage(page) {
+      this.page = Math.min(Math.max(1, page), this.totalPages);
     },
 
     toggleSelected(sku) {
@@ -76,21 +95,30 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     async act(sku, action) {
-      const updated = await updateSkuAction(sku, action);
-      const index = this.skus.findIndex((s) => s.sku === sku);
-      if (index !== -1) this.skus[index] = updated;
+      this.actionError = null;
+      try {
+        const updated = await updateSkuAction(sku, action);
+        const index = this.skus.findIndex((s) => s.sku === sku);
+        if (index !== -1) this.skus[index] = updated;
+      } catch (err) {
+        this.actionError = `Failed to update ${sku}: ${err.message}`;
+      }
     },
 
     async bulkAct(action) {
       const skuList = Array.from(this.selected);
       if (skuList.length === 0) return;
 
-      await bulkUpdateSkuAction(skuList, action);
-
-      this.skus = this.skus.map((s) =>
-        skuList.includes(s.sku) ? { ...s, action_status: action } : s
-      );
-      this.clearSelection();
+      this.actionError = null;
+      try {
+        await bulkUpdateSkuAction(skuList, action);
+        this.skus = this.skus.map((s) =>
+          skuList.includes(s.sku) ? { ...s, action_status: action } : s
+        );
+        this.clearSelection();
+      } catch (err) {
+        this.actionError = `Bulk update failed: ${err.message}`;
+      }
     },
   },
 });
