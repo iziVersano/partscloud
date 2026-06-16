@@ -2,14 +2,27 @@
 Views stay thin on purpose: parse the request, call a service or
 repository, serialize the response. No business logic lives here —
 see services/risk.py and services/actions.py for that.
+
+Error handling philosophy: catch specific, expected failure modes
+(bad query param, unknown SKU, invalid action) and return a clear 4xx
+with a message a frontend can show. Anything not caught here is a
+genuine bug and should surface as a 500, not be silently mapped to a
+misleading 404 — see update_sku_action below for why this matters.
 """
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from apps.inventory.models import SKU
 from apps.inventory.repositories import sku_repository
 from apps.inventory.serializers import SKUSerializer
 from apps.inventory.services import actions
 from apps.inventory.services.actions import InvalidActionError
+
+ALLOWED_ORDERING_FIELDS = {
+    "sku", "name", "category", "on_hand", "avg_daily_demand",
+    "lead_time_days", "safety_stock", "unit_cost_eur", "risk_score",
+}
+ALLOWED_RISK_VALUES = {choice[0] for choice in SKU.RISK_CHOICES}
 
 
 @api_view(["GET"])
@@ -18,16 +31,26 @@ def list_skus(request):
     GET /api/v1/skus
     Optional query params:
       ?risk=critical            filter by risk level
-      ?ordering=risk_score       sort (any model field, prefix with
-                                  "-" for descending)
+      ?ordering=risk_score       sort (prefix with "-" for descending)
     """
     skus = sku_repository.get_all()
 
     risk = request.query_params.get("risk")
     if risk:
+        if risk not in ALLOWED_RISK_VALUES:
+            return Response(
+                {"detail": f"'risk' must be one of {sorted(ALLOWED_RISK_VALUES)}"},
+                status=400,
+            )
         skus = skus.filter(risk=risk)
 
     ordering = request.query_params.get("ordering", "risk_score")
+    ordering_field = ordering.lstrip("-")
+    if ordering_field not in ALLOWED_ORDERING_FIELDS:
+        return Response(
+            {"detail": f"'ordering' must be one of {sorted(ALLOWED_ORDERING_FIELDS)}"},
+            status=400,
+        )
     skus = skus.order_by(ordering)
 
     serializer = SKUSerializer(skus, many=True)
@@ -41,12 +64,13 @@ def update_sku_action(request, sku_id):
     body: { "action": "accepted" | "declined" }
     """
     action = request.data.get("action")
+
     try:
         sku = actions.apply_action(sku_id, action)
     except InvalidActionError as exc:
         return Response({"detail": str(exc)}, status=400)
-    except Exception:
-        return Response({"detail": "SKU not found"}, status=404)
+    except SKU.DoesNotExist:
+        return Response({"detail": f"SKU '{sku_id}' not found"}, status=404)
 
     serializer = SKUSerializer(sku)
     return Response(serializer.data)
@@ -61,7 +85,7 @@ def bulk_update_sku_action(request):
     sku_ids = request.data.get("skus", [])
     action = request.data.get("action")
 
-    if not sku_ids:
+    if not isinstance(sku_ids, list) or not sku_ids:
         return Response({"detail": "'skus' must be a non-empty list"}, status=400)
 
     try:
@@ -69,4 +93,10 @@ def bulk_update_sku_action(request):
     except InvalidActionError as exc:
         return Response({"detail": str(exc)}, status=400)
 
-    return Response({"updated": updated_count})
+    response = {"updated": updated_count}
+    if updated_count < len(sku_ids):
+        response["detail"] = (
+            f"{len(sku_ids) - updated_count} of {len(sku_ids)} SKUs "
+            "were not found and were skipped"
+        )
+    return Response(response)

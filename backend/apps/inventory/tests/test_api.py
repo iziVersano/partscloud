@@ -45,6 +45,21 @@ class ListSkusTests(TestCase):
         self.assertIn("SP-TEST-CRITICAL", skus_in_response)
         self.assertNotIn("SP-TEST-OK", skus_in_response)
 
+    def test_invalid_risk_filter_returns_400(self):
+        response = self.client.get("/api/v1/skus?risk=banana")
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_ordering_field_returns_400_not_500(self):
+        # Without validation, an unknown field name would crash with a
+        # raw 500 (Django raises FieldError when the queryset is
+        # evaluated) instead of a clear, frontend-friendly error.
+        response = self.client.get("/api/v1/skus?ordering=does_not_exist")
+        self.assertEqual(response.status_code, 400)
+
+    def test_descending_ordering_is_accepted(self):
+        response = self.client.get("/api/v1/skus?ordering=-on_hand")
+        self.assertEqual(response.status_code, 200)
+
 
 class SingleActionTests(TestCase):
     def test_accept_updates_status(self):
@@ -79,6 +94,17 @@ class SingleActionTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_missing_action_returns_400(self):
+        make_sku(sku="SP-A")
+
+        response = self.client.post(
+            "/api/v1/skus/SP-A/action",
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
 
 class BulkActionTests(TestCase):
     def test_bulk_decline_updates_all_selected(self):
@@ -106,3 +132,28 @@ class BulkActionTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_non_list_skus_returns_400(self):
+        response = self.client.post(
+            "/api/v1/skus/actions",
+            data=json.dumps({"skus": "SP-A", "action": "accepted"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_unknown_skus_in_bulk_are_skipped_and_reported(self):
+        make_sku(sku="SP-A")
+
+        response = self.client.post(
+            "/api/v1/skus/actions",
+            data=json.dumps(
+                {"skus": ["SP-A", "SP-DOES-NOT-EXIST"], "action": "accepted"}
+            ),
+            content_type="application/json",
+        )
+
+        body = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body["updated"], 1)
+        self.assertIn("detail", body)

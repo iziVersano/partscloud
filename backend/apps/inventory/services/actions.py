@@ -13,13 +13,20 @@ class InvalidActionError(ValueError):
     pass
 
 
-def apply_action(sku_id, action):
+def _validate_action(action):
+    if action is None:
+        raise InvalidActionError("'action' is required")
     if action not in VALID_ACTIONS:
-        raise InvalidActionError(f"'{action}' is not a valid action")
+        raise InvalidActionError(
+            f"'{action}' is not a valid action — use 'accepted' or 'declined'"
+        )
+
+
+def apply_action(sku_id, action):
+    _validate_action(action)
     return sku_repository.update_action_status(sku_id, action)
 
 
 def apply_bulk_action(sku_ids, action):
-    if action not in VALID_ACTIONS:
-        raise InvalidActionError(f"'{action}' is not a valid action")
+    _validate_action(action)
     return sku_repository.bulk_update_action_status(sku_ids, action)
