@@ -1,10 +1,21 @@
 <script setup>
+import { onMounted } from "vue";
+import { useInventoryStore } from "./features/inventory/store/inventoryStore";
+import PartsTable from "./features/inventory/components/PartsTable.vue";
+
+const store = useInventoryStore();
+
+onMounted(() => {
+  store.load();
+});
 </script>
 
 <template>
   <main>
     <h1>PartsCloud — Stockout Risk</h1>
-    <p>Inventory dashboard loading in the next commits.</p>
+    <p v-if="store.loading">Loading…</p>
+    <p v-else-if="store.error">Failed to load: {{ store.error }}</p>
+    <PartsTable v-else />
   </main>
 </template>
 
