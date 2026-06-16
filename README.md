@@ -3,6 +3,10 @@
 Flags spare-part SKUs at risk of running out before the next delivery,
 and lets a planner accept or decline the suggestion per SKU or in bulk.
 
+**Stack:** Django · DRF · SQLite · Vue 3 · Pinia · Docker Compose
+
+---
+
 ## Run it — one command
 
 ```
@@ -22,21 +26,25 @@ docker compose up
 └───────────────────┘
 ```
 
-- API: http://localhost:8000/api/v1/skus
-- UI: http://localhost:5173
+| Service | URL |
+|---|---|
+| API | http://localhost:8000/api/v1/skus |
+| UI | http://localhost:5173 |
 
-No Docker locally? Use **GitHub Codespaces** instead — Docker comes
+`migrate` creates the schema and seeds the CSV in one step on first
+boot. It's a data migration, so it only runs once — restarting won't
+duplicate rows.
+
+**No Docker locally?** Use GitHub Codespaces — Docker comes
 preconfigured via `.devcontainer/`, no local setup needed:
 
-1. On the repo page, click **Code** → **Codespaces** tab → **Create
+1. On the repo page: **Code** → **Codespaces** tab → **Create
    codespace on main**
 2. Wait for it to build (sets up Docker automatically)
 3. In the terminal that opens: `docker compose up`
 4. Click the **port 5173** notification/link to open the UI
 
-`migrate` creates the schema and seeds the CSV in one step on first
-boot. It's a data migration, so it only runs once — restarting won't
-duplicate rows.
+---
 
 ## How I defined "at risk"
 
@@ -46,10 +54,11 @@ projected = on_hand - (avg_daily_demand × lead_time_days)
 
 Units left when the next delivery arrives, at normal selling pace:
 
-- `projected < 0` → **critical** — runs out before resupply.
-- `projected < safety_stock` → **warning** — eats into the buffer
-  meant for spikes or late deliveries.
-- otherwise → **ok**.
+| Condition | Risk |
+|---|---|
+| `projected < 0` | **critical** — runs out before resupply |
+| `projected < safety_stock` | **warning** — eats into the buffer meant for spikes or late deliveries |
+| otherwise | **ok** |
 
 I flag at the safety-stock line, not zero — the buffer only helps if
 there's still lead time left to react when you breach it.
@@ -72,20 +81,23 @@ safe) and zero safety stock (warning band collapses to "stockout only" —
 correct, not a bug). Risk is computed once at seed time and stored, not
 recalculated per request.
 
+---
+
 ## Why this structure
 
-Backend: `repositories/` (DB access) → `services/` (risk + accept/decline
-logic, plain functions, no Django) → `api/` (thin views). The risk
-formula is what I most expect to be asked to change live, so it's
-isolated and unit-testable in seconds, not tangled into a view.
+**Backend:** `repositories/` (DB access) → `services/` (risk +
+accept/decline logic, plain functions, no Django) → `api/` (thin
+views). The risk formula is what I most expect to be asked to change
+live, so it's isolated and unit-testable in seconds, not tangled into
+a view.
 
 ```
 views.py (thin) → services/ (the logic) → repositories/ (only ORM contact) → SQLite
 ```
 
-Frontend: feature-based, not type-based — `features/inventory/` holds
-its own components, API calls, and store, so a second feature is a
-sibling folder, not files scattered into shared ones.
+**Frontend:** feature-based, not type-based — `features/inventory/`
+holds its own components, API calls, and store, so a second feature is
+a sibling folder, not files scattered into shared ones.
 
 ```
 src/
@@ -97,38 +109,55 @@ Not required at 50 rows — I'd happily explain a flatter version. I'd
 reach for this the moment a second feature or developer showed up, and
 it cost nothing to set up correctly now.
 
+---
+
 ## Error handling
 
 Catch specific, expected failures → clear 4xx; anything else is a real
-500, not silently disguised. `ordering`/`risk` query params are
-validated (an unknown field used to crash with a raw 500); unknown SKU
-is `SKU.DoesNotExist`, not a blanket `except Exception` masking real
-bugs as 404; bulk actions report any SKUs skipped rather than going
-silent.
+500, not silently disguised.
+
+- `ordering`/`risk` query params are validated (an unknown field used
+  to crash with a raw 500)
+- unknown SKU is `SKU.DoesNotExist`, not a blanket `except Exception`
+  masking real bugs as 404
+- bulk actions report any SKUs skipped rather than going silent
+
+---
 
 ## What I chose not to build
 
 - **Order quantities** — brief asks "at risk," not "how much to
-  reorder"; needs a policy the data doesn't give me.
-- **Caching** — not a real problem at 50 rows.
+  reorder"; needs a policy the data doesn't give me
+- **Caching** — not a real problem at 50 rows
 - **Frontend tests** — backend has unit + integration tests; Vue
-  testing needed setup I didn't think worth the time box.
-- **Auth** — fine for a take-home, not production.
+  testing needed setup I didn't think worth the time box
+- **Auth** — fine for a take-home, not production
 
 ## With more time
 
 Postgres + background risk recompute if `on_hand` changes; an actual
 order-quantity suggestion; frontend tests; a real design pass.
 
+---
+
 ## Requirements checklist
 
-**Backend** — [x] CSV → DB · [x] risk per SKU · [x] `GET /skus` ·
-[x] accept/decline single + bulk
+**Backend**
+- [x] CSV → DB
+- [x] risk per SKU
+- [x] `GET /skus`
+- [x] accept/decline single + bulk
 
-**Frontend** — [x] list with risk indicator · [x] filter/sort ·
-[x] accept/decline single + bulk
+**Frontend**
+- [x] list with risk indicator
+- [x] filter/sort
+- [x] accept/decline single + bulk
 
-**Ops** — [x] `docker compose up` (local or Codespace)
+**Ops**
+- [x] `docker compose up` (local or Codespace)
 
-**README** — [x] how to run · [x] risk definition + why ·
-[x] what's skipped + why · [x] what I'd do with more time
+**README**
+- [x] how to run
+- [x] risk definition + why
+- [x] what's skipped + why
+- [x] what I'd do with more time
