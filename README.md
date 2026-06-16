@@ -124,6 +124,13 @@ folders.
 ```
 src/
 ├── App.vue
+├── router/             ← empty, reserved for vue-router if a second
+│                          page is ever needed
+├── shared/
+│   ├── components/      ← empty, reserved for components reused
+│   │                       across more than one feature
+│   └── composables/     ← empty, reserved for reusable logic
+│                           (e.g. useDebounce) shared across features
 └── features/
     └── inventory/          ← everything about this feature, together
         ├── components/      PartsTable, RiskBadge, FilterBar,
@@ -131,9 +138,15 @@ src/
         ├── api/              inventoryApi.js (all fetch calls)
         └── store/            inventoryStore.js (Pinia state)
 
-A second feature (e.g. "suppliers") would be a sibling folder here,
-not new files scattered into the same components/api/store.
+A second feature (e.g. "suppliers") would be a sibling folder under
+features/, pulling shared pieces from shared/ rather than duplicating
+them or reaching into inventory/ directly.
 ```
+
+The three empty folders aren't unused scaffolding left lying around —
+each has a short README explaining what it's reserved for and why it's
+empty today, the same instinct as `prod.py` on the backend: cheap to
+place correctly now, costly to retrofit later.
 
 None of this is required for a 50-row task — I'd be just as happy
 explaining a flatter version. I chose it because it's what I'd reach
