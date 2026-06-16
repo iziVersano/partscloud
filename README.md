@@ -45,17 +45,6 @@ duplicate rows.
 2. In the terminal that opens: `docker compose up`
 3. Click the **port 5173** notification/link to open the UI
 
-**Running without Docker** (local or in a Codespace terminal — a
-Python virtualenv is recommended but not required):
-
-```
-cd backend && pip install -r requirements/dev.txt
-python manage.py migrate && python manage.py runserver
-
-cd frontend && npm install
-npm run dev
-```
-
 ---
 
 ## How I defined "at risk"
