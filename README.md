@@ -3,10 +3,30 @@
 Flags spare-part SKUs at risk of running out before the next delivery,
 and lets a planner accept or decline the suggestion per SKU or in bulk.
 
-## Run it
+## Run it — one command
 
 ```
 docker compose up
+```
+
+That single command builds and starts both containers — nothing else
+to install or configure first.
+
+```
+                docker compose up
+                       │
+        ┌──────────────┴──────────────┐
+        ▼                              ▼
+┌───────────────────┐        ┌───────────────────┐
+│  backend (Django)  │        │  frontend (Vue)    │
+│  :8000              │◄──────│  :5173, proxies    │
+│                     │  API  │  /api → backend     │
+│  migrate → seed CSV │       │                     │
+│  → serve API        │       └───────────────────┘
+└───────────────────┘
+        │
+        ▼
+   open http://localhost:5173 in a browser
 ```
 
 - API: http://localhost:8000/api/v1/skus
@@ -33,6 +53,23 @@ arrives, at normal selling pace. I flag against two lines:
 I flag at the safety-stock line, not zero, because the buffer only
 helps if there's still lead time left to react when you breach it —
 waiting for zero means the wait has already started with no margin.
+
+```
+on_hand, avg_daily_demand, lead_time_days, safety_stock
+                    │
+                    ▼
+        avg_daily_demand == 0 ? ──yes──► OK (can't stock out)
+                    │ no
+                    ▼
+projected = on_hand − (avg_daily_demand × lead_time_days)
+                    │
+        ┌───────────┼───────────────┐
+        ▼           ▼               ▼
+  projected<0   projected<safety   else
+        │              │             │
+        ▼              ▼             ▼
+   CRITICAL        WARNING          OK
+```
 
 Two edge cases the data plants: zero demand (divides by zero in a naive
 calc — treated as safe, since it can't stock out) and zero safety stock
