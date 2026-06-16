@@ -5,6 +5,8 @@ and lets a planner accept or decline the suggestion per SKU or in bulk.
 
 **Stack:** Django · DRF · SQLite · Vue 3 · Pinia · Docker Compose
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/iziVersano/partscloud)
+
 ---
 
 ## Run it — one command
@@ -35,14 +37,13 @@ docker compose up
 boot. It's a data migration, so it only runs once — restarting won't
 duplicate rows.
 
-**No Docker locally?** Use GitHub Codespaces — Docker comes
-preconfigured via `.devcontainer/`, no local setup needed:
+**No Docker locally?** Click the badge above (or **Code** → **Codespaces**
+→ **Create codespace on main**) — Docker comes preconfigured via
+`.devcontainer/`, no local setup needed:
 
-1. On the repo page: **Code** → **Codespaces** tab → **Create
-   codespace on main**
-2. Wait for it to build (sets up Docker automatically)
-3. In the terminal that opens: `docker compose up`
-4. Click the **port 5173** notification/link to open the UI
+1. Wait for the codespace to build (sets up Docker automatically)
+2. In the terminal that opens: `docker compose up`
+3. Click the **port 5173** notification/link to open the UI
 
 ---
 
