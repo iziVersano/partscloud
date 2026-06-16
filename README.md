@@ -16,15 +16,15 @@ docker compose up
 ```
 
 ```
-             docker compose up
-           |                       |
-           +-----------------------+
-           v                       v
-+--------------------+    +----------------+
-|  backend (Django)  |    | frontend (Vue) |
-|       :8000        | <--|     :5173      |
-| migrate + seed CSV |    |  proxies /api  |
-+--------------------+    +----------------+
+                        docker compose up
+           |                      |                    |
+           +----------------------+--------------------+
+           v                      v                    v
++--------------------+   +----------------+   +-----------------+
+|  backend (Django)  |   | frontend (Vue) |   |      tests      |
+|       :8000        |   |     :5173      |   |   in-memory DB  |
+| migrate + seed CSV |   |  proxies /api  |   | exits when done |
++--------------------+   +----------------+   +-----------------+
 ```
 
 | Service | URL |
