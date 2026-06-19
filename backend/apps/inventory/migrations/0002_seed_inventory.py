@@ -5,15 +5,40 @@ row's risk once, at seed time, rather than on every API request.
 Django migrations only ever run once per environment — this is the
 "elegant" alternative to a management command with a manual
 if-already-seeded guard: migrate is naturally idempotent.
+
+NOTE: risk logic is intentionally inlined here rather than imported
+from services/risk.py. Django's migration framework executes migrations
+against historical model states, and importing live app code in a
+migration creates a fragile dependency — if the service signature ever
+changes, this historical migration would break. The formula is short
+enough that inlining it is the correct pattern.
 """
 import csv
 from pathlib import Path
 
 from django.db import migrations
 
-from apps.inventory.services.risk import compute_risk_fields
-
 CSV_PATH = Path(__file__).resolve().parent.parent.parent.parent / "data" / "spare_parts_inventory.csv"
+
+
+def _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock):
+    """Inlined from services/risk.py — see module docstring for why."""
+    if avg_daily_demand == 0:
+        return "ok"
+    projected = on_hand - (avg_daily_demand * lead_time_days)
+    if projected < 0:
+        return "critical"
+    if projected < safety_stock:
+        return "warning"
+    return "ok"
+
+
+def _compute_risk_score(on_hand, avg_daily_demand, lead_time_days, safety_stock):
+    """Inlined from services/risk.py — see module docstring for why."""
+    if avg_daily_demand == 0:
+        return float(safety_stock)
+    projected = on_hand - (avg_daily_demand * lead_time_days)
+    return projected - safety_stock
 
 
 def load_csv(apps, schema_editor):
@@ -30,9 +55,10 @@ def load_csv(apps, schema_editor):
             lead_time_days = int(row["lead_time_days"])
             safety_stock = int(row["safety_stock"])
 
-            risk_fields = compute_risk_fields(
-                on_hand, avg_daily_demand, lead_time_days, safety_stock
-            )
+            risk_fields = {
+                "risk": _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock),
+                "risk_score": _compute_risk_score(on_hand, avg_daily_demand, lead_time_days, safety_stock),
+            }
 
             rows.append(
                 SKU(
