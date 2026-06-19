@@ -13,10 +13,13 @@ export const useInventoryStore = defineStore("inventory", {
     loading: false,
     error: null,
     actionError: null,
-    riskFilter: null, // null | 'critical' | 'warning' | 'ok'
+    riskFilter: null,
     sortField: "risk_score",
-    sortDir: "asc", // 'asc' | 'desc'
-    selected: new Set(),
+    sortDir: "asc",
+    selected: [],   // plain array instead of Set — Vue 3 tracks array
+                    // mutations reactively; Set.add()/delete() are invisible
+                    // to the reactivity system and would freeze selectedCount
+                    // at 0 and never show the bulk action bar
     page: 1,
   }),
 
@@ -47,7 +50,7 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     selectedCount(state) {
-      return state.selected.size;
+      return state.selected.length;
     },
   },
 
@@ -66,11 +69,8 @@ export const useInventoryStore = defineStore("inventory", {
 
     setRiskFilter(risk) {
       this.riskFilter = risk;
-      this.page = 1; // avoid landing on an empty page after filtering
-      this.clearSelection(); // don't carry hidden selections into a
-      // different filter — a bulk action should only ever touch rows
-      // the user can currently see, not ones selected under a filter
-      // they've since switched away from
+      this.page = 1;
+      this.clearSelection();
     },
 
     setSort(field) {
@@ -87,15 +87,20 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     toggleSelected(sku) {
-      if (this.selected.has(sku)) {
-        this.selected.delete(sku);
+      const i = this.selected.indexOf(sku);
+      if (i !== -1) {
+        this.selected.splice(i, 1);
       } else {
-        this.selected.add(sku);
+        this.selected.push(sku);
       }
     },
 
+    isSelected(sku) {
+      return this.selected.includes(sku);
+    },
+
     clearSelection() {
-      this.selected.clear();
+      this.selected = [];
     },
 
     async act(sku, action) {
@@ -110,7 +115,7 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     async bulkAct(action) {
-      const skuList = Array.from(this.selected);
+      const skuList = [...this.selected];
       if (skuList.length === 0) return;
 
       this.actionError = null;

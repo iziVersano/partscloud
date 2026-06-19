@@ -36,14 +36,19 @@ function sortBy(field) {
 // ids), so checking boxes on page 1, then page 2, accumulates correctly.
 const allOnPageSelected = computed(() =>
   store.paginatedSkus.length > 0 &&
-  store.paginatedSkus.every((row) => store.selected.has(row.sku))
+  store.paginatedSkus.every((row) => store.isSelected(row.sku))
 );
 
 function toggleSelectAll() {
   if (allOnPageSelected.value) {
-    store.paginatedSkus.forEach((row) => store.selected.delete(row.sku));
+    store.paginatedSkus.forEach((row) => {
+      const i = store.selected.indexOf(row.sku);
+      if (i !== -1) store.selected.splice(i, 1);
+    });
   } else {
-    store.paginatedSkus.forEach((row) => store.selected.add(row.sku));
+    store.paginatedSkus.forEach((row) => {
+      if (!store.isSelected(row.sku)) store.selected.push(row.sku);
+    });
   }
 }
 </script>
@@ -79,7 +84,7 @@ function toggleSelectAll() {
           <td class="checkbox-col">
             <input
               type="checkbox"
-              :checked="store.selected.has(row.sku)"
+              :checked="store.isSelected(row.sku)"
               @change="onCheckboxChange(row.sku)"
             />
           </td>
