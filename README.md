@@ -49,7 +49,7 @@ duplicate rows.
 `docker compose up` runs the test suite automatically, in its own
 `tests` container — no separate command needed. It starts once the
 backend container is up and exits when done (usually within a second,
-since it's just 23 tests against an in-memory DB); its output appears
+since it's just 24 tests against an in-memory DB); its output appears
 in the logs alongside backend and frontend, and it doesn't block or
 affect the running app either way.
 
@@ -59,7 +59,7 @@ To re-run them on demand without restarting everything:
 docker compose exec backend python manage.py test apps.inventory --settings=partscloud.settings.test
 ```
 
-23 tests — risk function (including both edge cases) and all three API
+24 tests — risk function (including both edge cases) and all three API
 endpoints, against an in-memory DB.
 
 ---
@@ -142,7 +142,21 @@ Catch specific, expected failures → clear 4xx; anything else is a real
 
 ---
 
-## What I chose not to build
+## What a second pass found
+
+Two real bugs, both fixed with regression tests:
+
+- **Bulk action false positive** — the "N SKUs skipped" report compared
+  Django's `.update()` count (distinct rows matched) against the raw
+  request list length. A duplicate SKU id in the same request (e.g. a
+  double-click) triggered a false "1 skipped" even when everything
+  succeeded. Fixed by comparing against `len(set(sku_ids))` instead.
+- **Selection persisting across filter changes** — selecting rows under
+  the "Critical" filter, switching to "OK," then clicking "Accept all"
+  would silently bulk-accept the hidden Critical rows too. Fixed by
+  clearing selection whenever the filter changes.
+
+---
 
 - **Order quantities** — brief asks "at risk," not "how much to
   reorder"; needs a policy the data doesn't give me
