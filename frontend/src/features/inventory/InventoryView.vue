@@ -2,7 +2,6 @@
 import { onMounted } from "vue";
 import { useInventoryStore } from "./store/inventoryStore";
 import FilterBar from "./components/FilterBar.vue";
-import BulkActionBar from "./components/BulkActionBar.vue";
 import Pagination from "./components/Pagination.vue";
 import PartsTable from "./components/PartsTable.vue";
 
@@ -22,8 +21,6 @@ onMounted(() => {
     <template v-else>
       <p v-if="store.actionError" class="action-error">{{ store.actionError }}</p>
       <FilterBar />
-      <BulkActionBar />
-      <Pagination />
       <PartsTable />
       <Pagination />
     </template>

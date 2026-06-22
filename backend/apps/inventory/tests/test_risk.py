@@ -46,3 +46,46 @@ class ComputeRiskScoreTests(SimpleTestCase):
     def test_zero_demand_scores_as_safe(self):
         score = compute_risk_score(179, 0, 41, 0)
         self.assertGreaterEqual(score, 0)
+
+    def test_exact_score_value(self):
+        # projected = 25 - (2 * 10) = 5; score = 5 - 8 = -3
+        self.assertAlmostEqual(compute_risk_score(25, 2, 10, 8), -3.0)
+
+    def test_zero_demand_score_equals_safety_stock(self):
+        # zero-demand path returns safety_stock directly
+        self.assertEqual(compute_risk_score(100, 0, 30, 5), 5)
+
+
+class ComputeProjectedStockTests(SimpleTestCase):
+    def test_basic_projection(self):
+        # 50 - (2.0 * 10) = 30
+        from apps.inventory.services.risk import compute_projected_stock
+        self.assertAlmostEqual(compute_projected_stock(50, 2.0, 10), 30.0)
+
+    def test_negative_projection(self):
+        from apps.inventory.services.risk import compute_projected_stock
+        self.assertAlmostEqual(compute_projected_stock(5, 1.0, 10), -5.0)
+
+    def test_zero_lead_time(self):
+        from apps.inventory.services.risk import compute_projected_stock
+        self.assertAlmostEqual(compute_projected_stock(20, 3.5, 0), 20.0)
+
+
+class ComputeRiskFieldsTests(SimpleTestCase):
+    def test_returns_both_fields(self):
+        from apps.inventory.services.risk import compute_risk_fields
+        result = compute_risk_fields(25, 2, 10, 8)
+        self.assertIn("risk", result)
+        self.assertIn("risk_score", result)
+
+    def test_fields_are_consistent_with_individual_functions(self):
+        from apps.inventory.services.risk import compute_risk_fields
+        result = compute_risk_fields(25, 2, 10, 8)
+        self.assertEqual(result["risk"], SKU.RISK_WARNING)
+        self.assertAlmostEqual(result["risk_score"], -3.0)
+
+    def test_critical_sku_fields(self):
+        from apps.inventory.services.risk import compute_risk_fields
+        result = compute_risk_fields(1, 0.34, 38, 4)
+        self.assertEqual(result["risk"], SKU.RISK_CRITICAL)
+        self.assertLess(result["risk_score"], 0)

@@ -5,7 +5,7 @@ import {
   bulkUpdateSkuAction,
 } from "../api/inventoryApi";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export const useInventoryStore = defineStore("inventory", {
   state: () => ({
@@ -29,8 +29,15 @@ export const useInventoryStore = defineStore("inventory", {
       const field = state.sortField;
       const dir = state.sortDir === "desc" ? -1 : 1;
       result = [...result].sort((a, b) => {
-        if (a[field] < b[field]) return -1 * dir;
-        if (a[field] > b[field]) return 1 * dir;
+        const av = a[field];
+        const bv = b[field];
+        if (field === "sku") {
+          const an = parseInt(av.replace(/\D/g, ""), 10);
+          const bn = parseInt(bv.replace(/\D/g, ""), 10);
+          return (an - bn) * dir;
+        }
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
         return 0;
       });
 
