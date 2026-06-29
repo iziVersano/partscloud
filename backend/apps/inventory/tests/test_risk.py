@@ -2,6 +2,7 @@ from django.test import SimpleTestCase
 
 from apps.inventory.models import SKU
 from apps.inventory.services.risk import compute_risk, compute_risk_score
+from apps.inventory.services.risk_policy import DEFAULT_POLICY, RiskPolicy, get_policy
 
 
 class ComputeRiskTests(SimpleTestCase):
@@ -46,3 +47,37 @@ class ComputeRiskScoreTests(SimpleTestCase):
     def test_zero_demand_scores_as_safe(self):
         score = compute_risk_score(179, 0, 41, 0)
         self.assertGreaterEqual(score, 0)
+
+
+class RiskPolicyTests(SimpleTestCase):
+    def test_default_policy_matches_original_behaviour(self):
+        # on_hand=25, demand=2, lead_time=10 -> projected=5, safety_stock=8
+        # with default policy (multiplier=1.0): 5 < 8 -> WARNING
+        self.assertEqual(
+            compute_risk(25, 2, 10, 8, DEFAULT_POLICY),
+            SKU.RISK_WARNING,
+        )
+
+    def test_strict_policy_warns_earlier(self):
+        # same inputs but multiplier=2.0: WARNING if projected < 8*2=16
+        # projected=5 < 16 -> still WARNING (no change here)
+        # use a case where default is OK but strict is WARNING:
+        # on_hand=30, demand=2, lead_time=10 -> projected=10, safety_stock=8
+        # default: 10 >= 8 -> OK
+        # strict (×2): 10 < 16 -> WARNING
+        strict = RiskPolicy(warning_multiplier=2.0)
+        self.assertEqual(compute_risk(30, 2, 10, 8), SKU.RISK_OK)
+        self.assertEqual(compute_risk(30, 2, 10, 8, strict), SKU.RISK_WARNING)
+
+    def test_get_policy_returns_override_for_known_category(self):
+        policy = get_policy("Bearings")
+        self.assertGreater(policy.warning_multiplier, 1.0)
+
+    def test_get_policy_falls_back_to_default_for_unknown_category(self):
+        self.assertEqual(get_policy("UnknownCategory"), DEFAULT_POLICY)
+
+    def test_custom_critical_threshold(self):
+        # raise critical threshold to 5: projected=3 < 5 -> CRITICAL
+        # (with default it would be WARNING since 3 >= 0 and 3 < safety_stock=8)
+        policy = RiskPolicy(critical_threshold=5.0)
+        self.assertEqual(compute_risk(23, 2, 10, 8, policy), SKU.RISK_CRITICAL)
