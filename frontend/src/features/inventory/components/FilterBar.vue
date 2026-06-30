@@ -39,7 +39,7 @@ function select(value) {
       </button>
     </div>
 
-    <span class="count">{{ store.visibleSkus.length }} shown</span>
+    <span class="count">{{ store.total }} shown</span>
   </div>
 </template>
 
