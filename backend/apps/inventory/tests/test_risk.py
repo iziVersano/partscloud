@@ -1,7 +1,12 @@
+import importlib
+
 from django.test import SimpleTestCase
 
 from apps.inventory.models import SKU
 from apps.inventory.services.risk import compute_risk, compute_risk_score
+from apps.inventory.services.risk_policy import CATEGORY_POLICIES, DEFAULT_POLICY, RiskPolicy, get_policy
+
+_seed_migration = importlib.import_module("apps.inventory.migrations.0002_seed_inventory")
 
 
 class ComputeRiskTests(SimpleTestCase):
@@ -46,3 +51,33 @@ class ComputeRiskScoreTests(SimpleTestCase):
     def test_zero_demand_scores_as_safe(self):
         score = compute_risk_score(179, 0, 41, 0)
         self.assertGreaterEqual(score, 0)
+
+
+class RiskPolicyTests(SimpleTestCase):
+    def test_default_policy_matches_original_behaviour(self):
+        self.assertEqual(compute_risk(25, 2, 10, 8, DEFAULT_POLICY), SKU.RISK_WARNING)
+
+    def test_strict_policy_warns_earlier(self):
+        strict = RiskPolicy(warning_multiplier=2.0)
+        self.assertEqual(compute_risk(30, 2, 10, 8), SKU.RISK_OK)
+        self.assertEqual(compute_risk(30, 2, 10, 8, strict), SKU.RISK_WARNING)
+
+    def test_get_policy_returns_override_for_known_category(self):
+        self.assertGreater(get_policy("Bearings").warning_multiplier, 1.0)
+
+    def test_get_policy_falls_back_to_default_for_unknown_category(self):
+        self.assertEqual(get_policy("UnknownCategory"), DEFAULT_POLICY)
+
+    def test_custom_critical_threshold(self):
+        policy = RiskPolicy(critical_threshold=5.0)
+        self.assertEqual(compute_risk(23, 2, 10, 8, policy), SKU.RISK_CRITICAL)
+
+
+class SeedMigrationPolicyTests(SimpleTestCase):
+    def test_seed_multipliers_match_live_policy(self):
+        expected = {c: p.warning_multiplier for c, p in CATEGORY_POLICIES.items()}
+        self.assertEqual(_seed_migration._CATEGORY_WARNING_MULTIPLIERS, expected)
+
+    def test_seed_formula_applies_category_multiplier(self):
+        self.assertEqual(_seed_migration._compute_risk(30, 2, 10, 8, "Unlisted"), "ok")
+        self.assertEqual(_seed_migration._compute_risk(30, 2, 10, 8, "Bearings"), "warning")
