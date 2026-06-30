@@ -1,7 +1,6 @@
 # PartsCloud — Stockout Risk Tracker
 
-Flags spare-part SKUs at risk of running out before the next delivery,
-and lets a planner accept or decline the suggestion per SKU or in bulk.
+Flags spare-part SKUs at risk of running out before the next delivery. Planners can accept or decline per SKU or in bulk.
 
 **Stack:** Django · DRF · SQLite · Vue 3 · Pinia · Docker Compose
 
@@ -9,187 +8,69 @@ and lets a planner accept or decline the suggestion per SKU or in bulk.
 
 ---
 
-## Run it — one command
+## Run
 
 ```
 docker compose up
 ```
 
-```
-                        docker compose up
-           |                      |                    |
-           +----------------------+--------------------+
-           v                      v                    v
-+--------------------+   +----------------+   +-----------------+
-|  backend (Django)  |   | frontend (Vue) |   |      tests      |
-|       :8000        |   |     :5173      |   |   in-memory DB  |
-| migrate + seed CSV |   |  proxies /api  |   | exits when done |
-+--------------------+   +----------------+   +-----------------+
-```
+Starts backend `:8000`, frontend `:5173`, and runs the test suite. Migrations and seed data apply automatically on first boot.
 
-| Service | URL |
-|---|---|
-| API | http://localhost:8000/api/v1/skus |
-| UI | http://localhost:5173 |
-
-`migrate` creates the schema and seeds the CSV in one step on first
-boot. It's a data migration, so it only runs once — restarting won't
-duplicate rows.
-
-**No Docker locally?** Click the badge above (or **Code** → **Codespaces**
-→ **Create codespace on main**) — Docker comes preconfigured via
-`.devcontainer/`, no local setup needed:
-
-1. Wait for the codespace to build (sets up Docker automatically)
-2. In the terminal that opens: `docker compose up`
-3. Click the **port 5173** notification/link to open the UI
-
-## Tests
-
-`docker compose up` runs the test suite automatically, in its own
-`tests` container — no separate command needed. It starts once the
-backend container is up and exits when done (usually within a second,
-since it's just 24 tests against an in-memory DB); its output appears
-in the logs alongside backend and frontend, and it doesn't block or
-affect the running app either way.
-
-To re-run them on demand without restarting everything:
-
-```
-docker compose exec backend python manage.py test apps.inventory --settings=partscloud.settings.test
-```
-
-24 tests — risk function (including both edge cases) and all three API
-endpoints, against an in-memory DB.
+**No Docker?** Use the Codespaces badge above — Docker comes preconfigured.
 
 ---
 
-## How I defined "at risk"
+## Features
+
+- **Configurable risk policy** — per-category safety-stock multipliers (Bearings ×2.0, Drives/Chains ×1.5) on top of the base risk formula
+- **Server-side filtering, sorting, and pagination** — `GET /api/v1/skus` accepts `risk`, `ordering`, `page`, and `page_size`; returns `{results, total, total_pages}`
+- **Hardened CSV ingestion** — validates required fields, numeric types, and rejects negative values; bad rows are skipped and reported, not silent failures; `import_skus` management command for re-importing ERP exports
+- **Hardened action flow** — per-row and bulk in-flight state; double-submit blocked before the request fires; bulk actions re-fetch from server instead of optimistic updates; errors surface in a dismissable banner
+- **Accessibility + responsive** — sortable headers keyboard-operable (Enter/Space), `aria-sort`, `aria-pressed` on filters, `aria-live` regions; stacked card layout below 640px
+- **Frontend test layer** — Vitest + Vue Test Utils covering store logic, filtering/sorting, and component interactions (19 tests)
+
+---
+
+## Risk model
 
 ```
-projected = on_hand - (avg_daily_demand x lead_time_days)
+projected = on_hand - (avg_daily_demand × lead_time_days)
 ```
-
-Units left when the next delivery arrives, at normal selling pace:
 
 | Condition | Risk |
 |---|---|
-| `projected < 0` | **critical** — runs out before resupply |
-| `projected < safety_stock` | **warning** — eats into the buffer meant for spikes or late deliveries |
+| `projected < 0` | **critical** |
+| `projected < safety_stock × category_multiplier` | **warning** |
 | otherwise | **ok** |
 
-I flag at the safety-stock line, not zero — the buffer only helps if
-there's still lead time left to react when you breach it.
-
-```
-             avg_daily_demand == 0?
- yes --> OK (treated as safe, can't stock out)
-                       no
-                       v
-projected = on_hand - (demand x lead_time_days)
-                       |
-      +---------------------+----------------+
-      v                     v                v
-projected < 0   projected < safety_stock   else
-   CRITICAL             WARNING             OK
-```
-
-Two tested edge cases: zero demand (would divide by zero — treated as
-safe) and zero safety stock (warning band collapses to "stockout only" —
-correct, not a bug). Risk is computed once at seed time and stored, not
-recalculated per request.
+Zero demand → OK (no stockout risk). Computed once at seed time and stored.
 
 ---
 
-## Why this structure
+## Architecture
 
-**Backend:** `repositories/` (DB access) → `services/` (risk +
-accept/decline logic — plain functions, no ORM or HTTP inside them) →
-`api/` (thin Django/DRF views). The risk formula is what I most expect
-to be asked to change live, so it's isolated and unit-testable in
-seconds, not tangled into a view.
+**Backend:** `repositories/` (DB) → `services/` (risk + actions, no ORM) → `api/` (thin DRF views)
 
-```
-views.py (thin) -> services/ (the logic) -> repositories/ (only ORM contact) -> SQLite
-```
-
-**Frontend:** feature-based, not type-based — `features/inventory/`
-holds its own components, API calls, and store, so a second feature is
-a sibling folder, not files scattered into shared ones.
-
-```
-src/
-|-- router/, shared/components/, shared/composables/   (empty, reserved)
-`-- features/inventory/  -> components/, api/, store/
-```
-
-Not required at 50 rows — I'd happily explain a flatter version. I'd
-reach for this the moment a second feature or developer showed up, and
-it cost nothing to set up correctly now.
+**Frontend:** feature-based under `features/inventory/` — components, API, and store co-located.
 
 ---
 
-## Error handling
+## Tests
 
-Catch specific, expected failures → clear 4xx; anything else is a real
-500, not silently disguised.
+```
+# Backend (52 tests)
+python manage.py test apps.inventory --settings=partscloud.settings.test
 
-- `ordering`/`risk` query params are validated (an unknown field used
-  to crash with a raw 500)
-- unknown SKU is `SKU.DoesNotExist`, not a blanket `except Exception`
-  masking real bugs as 404
-- bulk actions report any SKUs skipped rather than going silent
-
----
-
-## What a second pass found
-
-Two real bugs, both fixed with regression tests:
-
-- **Bulk action false positive** — the "N SKUs skipped" report compared
-  Django's `.update()` count (distinct rows matched) against the raw
-  request list length. A duplicate SKU id in the same request (e.g. a
-  double-click) triggered a false "1 skipped" even when everything
-  succeeded. Fixed by comparing against `len(set(sku_ids))` instead.
-- **Selection persisting across filter changes** — selecting rows under
-  the "Critical" filter, switching to "OK," then clicking "Accept all"
-  would silently bulk-accept the hidden Critical rows too. Fixed by
-  clearing selection whenever the filter changes.
+# Frontend (19 tests)
+cd frontend && npm test
+```
 
 ---
 
-- **Order quantities** — brief asks "at risk," not "how much to
-  reorder"; needs a policy the data doesn't give me
-- **Caching** — not a real problem at 50 rows
-- **Frontend tests** — backend has unit + integration tests; Vue
-  testing needed setup I didn't think worth the time box
-- **Auth** — fine for a take-home, not production
+## Checklist
 
-## With more time
+**Backend** — CSV import · risk model · `GET /skus` · accept/decline single + bulk
 
-Postgres + background risk recompute if `on_hand` changes; an actual
-order-quantity suggestion; frontend tests; a real design pass.
+**Frontend** — risk table · filter/sort · accept/decline single + bulk · pagination
 
----
-
-## Requirements checklist
-
-**Backend**
-- [x] CSV → DB
-- [x] risk per SKU
-- [x] `GET /skus`
-- [x] accept/decline single + bulk
-
-**Frontend**
-- [x] list with risk indicator
-- [x] filter/sort
-- [x] accept/decline single + bulk
-
-**Ops**
-- [x] `docker compose up` (local or Codespace)
-
-**README**
-- [x] how to run
-- [x] risk definition + why
-- [x] what's skipped + why
-- [x] what I'd do with more time
+**Ops** — `docker compose up` · Codespaces ready
