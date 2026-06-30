@@ -14,10 +14,18 @@ function declineSelected() {
 
 <template>
   <div v-if="store.selectedCount > 0" class="bulk-bar">
-    <span class="count">{{ store.selectedCount }} selected</span>
-    <button class="btn accept" @click="acceptSelected">Accept all</button>
-    <button class="btn decline" @click="declineSelected">Decline all</button>
-    <button class="clear" @click="store.clearSelection()">Clear</button>
+    <span class="count">
+      {{ store.bulkPending ? "Working…" : `${store.selectedCount} selected` }}
+    </span>
+    <button class="btn accept" @click="acceptSelected" :disabled="store.bulkPending">
+      Accept all
+    </button>
+    <button class="btn decline" @click="declineSelected" :disabled="store.bulkPending">
+      Decline all
+    </button>
+    <button class="clear" @click="store.clearSelection()" :disabled="store.bulkPending">
+      Clear
+    </button>
   </div>
 </template>
 
@@ -68,5 +76,10 @@ function declineSelected() {
   font-size: 0.82rem;
   cursor: pointer;
   text-decoration: underline;
+}
+.btn:disabled,
+.clear:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

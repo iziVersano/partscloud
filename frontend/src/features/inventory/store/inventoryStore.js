@@ -20,17 +20,23 @@ export const useInventoryStore = defineStore("inventory", {
     sortField: "risk_score",
     sortDir: "asc",
     selected: [],
+    pendingSkus: [],
+    bulkPending: false,
   }),
 
   getters: {
     selectedCount(state) {
       return state.selected.length;
     },
+
+    isPending(state) {
+      return (sku) => state.pendingSkus.includes(sku);
+    },
   },
 
   actions: {
-    async load() {
-      this.loading = true;
+    async load({ silent = false } = {}) {
+      if (!silent) this.loading = true;
       this.error = null;
       try {
         const data = await fetchSkus({
@@ -45,7 +51,7 @@ export const useInventoryStore = defineStore("inventory", {
       } catch (err) {
         this.error = err.message;
       } finally {
-        this.loading = false;
+        if (!silent) this.loading = false;
       }
     },
 
@@ -98,26 +104,43 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     async act(sku, action) {
-      this.actionError = null;
+      if (this.pendingSkus.includes(sku) || this.bulkPending) return;
+
+      this.pendingSkus.push(sku);
       try {
         const updated = await updateSkuAction(sku, action);
         const index = this.skus.findIndex((s) => s.sku === sku);
         if (index !== -1) this.skus[index] = updated;
+        this.actionError = null;
       } catch (err) {
         this.actionError = `Failed to update ${sku}: ${err.message}`;
+      } finally {
+        const i = this.pendingSkus.indexOf(sku);
+        if (i !== -1) this.pendingSkus.splice(i, 1);
       }
     },
 
     async bulkAct(action) {
-      if (this.selected.length === 0) return;
-      this.actionError = null;
+      if (this.bulkPending || this.pendingSkus.length > 0) return;
+
+      const skuList = [...this.selected];
+      if (skuList.length === 0) return;
+
+      this.bulkPending = true;
       try {
-        await bulkUpdateSkuAction(this.selected, action);
+        const result = await bulkUpdateSkuAction(skuList, action);
+        await this.load({ silent: true });
         this.clearSelection();
-        this.load();
+        this.actionError = result.detail || null;
       } catch (err) {
         this.actionError = `Bulk update failed: ${err.message}`;
+      } finally {
+        this.bulkPending = false;
       }
+    },
+
+    dismissActionError() {
+      this.actionError = null;
     },
   },
 });
