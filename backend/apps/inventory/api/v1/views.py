@@ -10,6 +10,7 @@ genuine bug and should surface as a 500, not be silently mapped to a
 misleading 404 — see update_sku_action below for why this matters.
 """
 from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from apps.inventory.models import SKU
@@ -21,8 +22,13 @@ from apps.inventory.services.actions import InvalidActionError
 ALLOWED_ORDERING_FIELDS = {
     "sku", "name", "category", "on_hand", "avg_daily_demand",
     "lead_time_days", "safety_stock", "unit_cost_eur", "risk_score",
+    "action_status",
 }
 ALLOWED_RISK_VALUES = {choice[0] for choice in SKU.RISK_CHOICES}
+
+
+class SKUPagination(PageNumberPagination):
+    page_size = 20
 
 
 @api_view(["GET"])
@@ -32,17 +38,15 @@ def list_skus(request):
     Optional query params:
       ?risk=critical            filter by risk level
       ?ordering=risk_score       sort (prefix with "-" for descending)
+      ?page=2                    page number (page_size=20)
+    Response is paginated: { count, next, previous, results }.
     """
-    skus = sku_repository.get_all()
-
     risk = request.query_params.get("risk")
-    if risk:
-        if risk not in ALLOWED_RISK_VALUES:
-            return Response(
-                {"detail": f"'risk' must be one of {sorted(ALLOWED_RISK_VALUES)}"},
-                status=400,
-            )
-        skus = skus.filter(risk=risk)
+    if risk and risk not in ALLOWED_RISK_VALUES:
+        return Response(
+            {"detail": f"'risk' must be one of {sorted(ALLOWED_RISK_VALUES)}"},
+            status=400,
+        )
 
     ordering = request.query_params.get("ordering", "risk_score")
     ordering_field = ordering.lstrip("-")
@@ -51,10 +55,13 @@ def list_skus(request):
             {"detail": f"'ordering' must be one of {sorted(ALLOWED_ORDERING_FIELDS)}"},
             status=400,
         )
-    skus = skus.order_by(ordering)
 
-    serializer = SKUSerializer(skus, many=True)
-    return Response(serializer.data)
+    skus = sku_repository.get_all(risk=risk, ordering=ordering)
+
+    paginator = SKUPagination()
+    page = paginator.paginate_queryset(skus, request)
+    serializer = SKUSerializer(page, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 
 @api_view(["POST"])

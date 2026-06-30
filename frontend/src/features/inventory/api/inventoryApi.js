@@ -1,9 +1,10 @@
 const API_BASE = "/api/v1";
 
-export async function fetchSkus({ risk, ordering } = {}) {
+export async function fetchSkus({ risk, ordering, page } = {}) {
   const params = new URLSearchParams();
   if (risk) params.set("risk", risk);
   if (ordering) params.set("ordering", ordering);
+  if (page) params.set("page", page);
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const response = await fetch(`${API_BASE}/skus${query}`);

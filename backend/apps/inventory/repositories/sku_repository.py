@@ -7,8 +7,13 @@ this file needs to change.
 from apps.inventory.models import SKU
 
 
-def get_all():
-    return SKU.objects.all()
+def get_all(risk=None, ordering=None):
+    queryset = SKU.objects.all()
+    if risk:
+        queryset = queryset.filter(risk=risk)
+    if ordering:
+        queryset = queryset.order_by(ordering)
+    return queryset
 
 
 def get_by_sku(sku_id):

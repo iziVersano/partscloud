@@ -9,7 +9,10 @@ const PAGE_SIZE = 20;
 
 export const useInventoryStore = defineStore("inventory", {
   state: () => ({
-    skus: [],
+    skus: [],       // only the current page's rows — filtering, sorting,
+                     // and pagination all happen server-side now so this
+                     // store never holds the full dataset
+    totalCount: 0,
     loading: false,
     error: null,
     actionError: null,
@@ -24,29 +27,12 @@ export const useInventoryStore = defineStore("inventory", {
   }),
 
   getters: {
-    visibleSkus(state) {
-      let result = state.riskFilter
-        ? state.skus.filter((s) => s.risk === state.riskFilter)
-        : state.skus;
-
-      const field = state.sortField;
-      const dir = state.sortDir === "desc" ? -1 : 1;
-      result = [...result].sort((a, b) => {
-        if (a[field] < b[field]) return -1 * dir;
-        if (a[field] > b[field]) return 1 * dir;
-        return 0;
-      });
-
-      return result;
+    orderingParam(state) {
+      return state.sortDir === "desc" ? `-${state.sortField}` : state.sortField;
     },
 
     totalPages(state) {
-      return Math.max(1, Math.ceil(this.visibleSkus.length / PAGE_SIZE));
-    },
-
-    paginatedSkus(state) {
-      const start = (state.page - 1) * PAGE_SIZE;
-      return this.visibleSkus.slice(start, start + PAGE_SIZE);
+      return Math.max(1, Math.ceil(state.totalCount / PAGE_SIZE));
     },
 
     selectedCount(state) {
@@ -59,7 +45,13 @@ export const useInventoryStore = defineStore("inventory", {
       this.loading = true;
       this.error = null;
       try {
-        this.skus = await fetchSkus({ ordering: "risk_score" });
+        const data = await fetchSkus({
+          risk: this.riskFilter,
+          ordering: this.orderingParam,
+          page: this.page,
+        });
+        this.skus = data.results;
+        this.totalCount = data.count;
       } catch (err) {
         this.error = err.message;
       } finally {
@@ -71,6 +63,7 @@ export const useInventoryStore = defineStore("inventory", {
       this.riskFilter = risk;
       this.page = 1;
       this.clearSelection();
+      this.load();
     },
 
     setSort(field) {
@@ -80,10 +73,12 @@ export const useInventoryStore = defineStore("inventory", {
         this.sortField = field;
         this.sortDir = "asc";
       }
+      this.load();
     },
 
     setPage(page) {
       this.page = Math.min(Math.max(1, page), this.totalPages);
+      this.load();
     },
 
     toggleSelected(sku) {

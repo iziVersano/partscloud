@@ -26,12 +26,14 @@ def make_sku(**overrides):
 class ListSkusTests(TestCase):
     def test_returns_created_sku_among_results(self):
         # The seed migration runs against the test DB too, so we don't
-        # assert a total count — we assert our SKU is present.
-        make_sku(sku="SP-A")
+        # assert a total count — we assert our SKU is present. Default
+        # ordering is risk_score ascending, so a very negative score
+        # guarantees it lands on page 1 regardless of seed data size.
+        make_sku(sku="SP-A", risk_score=-999999.0)
 
         response = self.client.get("/api/v1/skus")
 
-        skus_in_response = [row["sku"] for row in response.json()]
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
         self.assertEqual(response.status_code, 200)
         self.assertIn("SP-A", skus_in_response)
 
@@ -41,7 +43,7 @@ class ListSkusTests(TestCase):
 
         response = self.client.get("/api/v1/skus?risk=critical")
 
-        skus_in_response = [row["sku"] for row in response.json()]
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
         self.assertIn("SP-TEST-CRITICAL", skus_in_response)
         self.assertNotIn("SP-TEST-OK", skus_in_response)
 
@@ -59,6 +61,56 @@ class ListSkusTests(TestCase):
     def test_descending_ordering_is_accepted(self):
         response = self.client.get("/api/v1/skus?ordering=-on_hand")
         self.assertEqual(response.status_code, 200)
+
+    def test_action_status_ordering_is_accepted(self):
+        # Regression test: action_status is a sortable column in the
+        # frontend table but was missing from ALLOWED_ORDERING_FIELDS.
+        response = self.client.get("/api/v1/skus?ordering=action_status")
+        self.assertEqual(response.status_code, 200)
+
+
+class PaginationTests(TestCase):
+    def setUp(self):
+        SKU.objects.all().delete()
+        for i in range(25):
+            make_sku(sku=f"SP-PAGE-{i:02d}", risk_score=float(i))
+
+    def test_response_is_paginated_envelope(self):
+        response = self.client.get("/api/v1/skus")
+        body = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("count", body)
+        self.assertIn("next", body)
+        self.assertIn("previous", body)
+        self.assertIn("results", body)
+
+    def test_first_page_returns_page_size_results(self):
+        response = self.client.get("/api/v1/skus")
+        body = response.json()
+
+        self.assertEqual(body["count"], 25)
+        self.assertEqual(len(body["results"]), 20)
+        self.assertIsNotNone(body["next"])
+        self.assertIsNone(body["previous"])
+
+    def test_second_page_returns_remaining_results(self):
+        response = self.client.get("/api/v1/skus?page=2")
+        body = response.json()
+
+        self.assertEqual(len(body["results"]), 5)
+        self.assertIsNone(body["next"])
+        self.assertIsNotNone(body["previous"])
+
+    def test_pages_do_not_overlap(self):
+        page1 = [row["sku"] for row in self.client.get("/api/v1/skus").json()["results"]]
+        page2 = [row["sku"] for row in self.client.get("/api/v1/skus?page=2").json()["results"]]
+
+        self.assertEqual(len(set(page1) & set(page2)), 0)
+
+    def test_out_of_range_page_returns_404(self):
+        response = self.client.get("/api/v1/skus?page=999")
+        self.assertEqual(response.status_code, 404)
 
 
 class SingleActionTests(TestCase):
