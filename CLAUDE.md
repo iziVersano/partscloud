@@ -79,7 +79,9 @@ Feature-based layout under `src/features/inventory/`:
 
 These exist as open PRs/branches and are not part of `main` yet — don't assume their behavior when reading code on `main`:
 
-- **Configurable per-category risk policy** (`feat/configurable-risk-policy`, PR #10) — adds `RiskPolicy` / `CATEGORY_POLICIES` to `services/risk_policy.py`, lets `compute_risk()` take a policy override per category (Bearings ×2.0, Drives ×1.5, Chains ×1.5 warning multiplier). The seed migration also needs the same multipliers inlined for the policy to actually reach served data — see that PR for the fix.
-- **Server-side pagination/filtering/sorting** (`server-side-pagination` / `fix/issue-1`) — moves `visibleSkus`/`paginatedSkus` logic from frontend getters to query params on `GET /api/v1/skus` (`page`, `page_size`, `risk`, `ordering`), changing the API response shape to `{ results, total, page, page_size, total_pages }`.
-- **Hardened CSV ingestion** (`harden-data-import`) — malformed/nonsensical row handling in the seed migration.
-- **Hardened action flow** (`harden-action-flow`) — double-submit and silent-failure protection on accept/decline.
+- **Configurable per-category risk policy** (`feat/configurable-risk-policy`, PR #11) — adds `RiskPolicy` / `CATEGORY_POLICIES` to `services/risk_policy.py`, lets `compute_risk()` take a policy override per category (Bearings ×2.0, Drives ×1.5, Chains ×1.5 warning multiplier). Seed migration applies the same multipliers so it reaches served data, not just direct calls to `compute_risk()`.
+- **Hardened CSV ingestion** (`feat/harden-csv-import`, PR #12) — adds `services/importer.py` to validate rows (required fields, numeric/date parsing, rejects negative values), a new `import_skus` management command, and the same validation inlined into the seed migration. Bad rows are skipped and logged, not silently admitted or fatal.
+- **Server-side pagination/filtering/sorting** (`feat/server-side-pagination`, PR #13) — moves filtering/sorting/pagination from frontend getters (`visibleSkus`/`paginatedSkus`) to query params on `GET /api/v1/skus` (`page`, `page_size`, `risk`, `ordering`), changing the response shape to `{ results, total, page, page_size, total_pages }`.
+- **Hardened action flow** (`feat/harden-action-flow`, PR #14) — adds `pendingSkus`/`bulkPending` in-flight tracking to the store, disables/relabels buttons while a request is pending, blocks double-submit in the action itself (not just the UI), and makes the error banner dismissable.
+
+Note: several of these touch the same files (`inventoryStore.js`, `PartsTable.vue`, seed migration) independently of each other — expect merge conflicts if merging more than one before rebasing the others.
