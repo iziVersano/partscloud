@@ -20,15 +20,22 @@ from django.db import migrations
 
 CSV_PATH = Path(__file__).resolve().parent.parent.parent.parent / "data" / "spare_parts_inventory.csv"
 
+_CATEGORY_WARNING_MULTIPLIERS = {
+    "Bearings": 2.0,
+    "Drives": 1.5,
+    "Chains": 1.5,
+}
 
-def _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock):
+
+def _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock, category):
     """Inlined from services/risk.py — see module docstring for why."""
     if avg_daily_demand == 0:
         return "ok"
+    multiplier = _CATEGORY_WARNING_MULTIPLIERS.get(category, 1.0)
     projected = on_hand - (avg_daily_demand * lead_time_days)
     if projected < 0:
         return "critical"
-    if projected < safety_stock:
+    if projected < safety_stock * multiplier:
         return "warning"
     return "ok"
 
@@ -56,7 +63,7 @@ def load_csv(apps, schema_editor):
             safety_stock = int(row["safety_stock"])
 
             risk_fields = {
-                "risk": _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock),
+                "risk": _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock, row["category"]),
                 "risk_score": _compute_risk_score(on_hand, avg_daily_demand, lead_time_days, safety_stock),
             }
 
