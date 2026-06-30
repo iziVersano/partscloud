@@ -1,5 +1,6 @@
 import { setActivePinia, createPinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { flushPromises } from "@vue/test-utils";
 import { useInventoryStore } from "../inventoryStore";
 import * as api from "../../api/inventoryApi";
 
@@ -17,6 +18,10 @@ function makeSku(overrides = {}) {
   };
 }
 
+function makePageResponse(skus, { total = null, total_pages = 1 } = {}) {
+  return { results: skus, total: total ?? skus.length, total_pages };
+}
+
 beforeEach(() => {
   setActivePinia(createPinia());
   vi.clearAllMocks();
@@ -24,7 +29,7 @@ beforeEach(() => {
 
 describe("load", () => {
   it("populates skus on success", async () => {
-    api.fetchSkus.mockResolvedValue([makeSku()]);
+    api.fetchSkus.mockResolvedValue(makePageResponse([makeSku()]));
     const store = useInventoryStore();
 
     await store.load();
@@ -45,28 +50,29 @@ describe("load", () => {
   });
 });
 
-describe("visibleSkus / pagination", () => {
-  it("filters by riskFilter", () => {
+describe("server-side filtering and sorting", () => {
+  it("passes riskFilter to fetchSkus when setRiskFilter is called", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([]));
     const store = useInventoryStore();
-    store.skus = [
-      makeSku({ sku: "A", risk: "critical" }),
-      makeSku({ sku: "B", risk: "ok" }),
-    ];
-    store.riskFilter = "critical";
 
-    expect(store.visibleSkus.map((s) => s.sku)).toEqual(["A"]);
+    store.setRiskFilter("critical");
+    await flushPromises();
+
+    expect(api.fetchSkus).toHaveBeenCalledWith(
+      expect.objectContaining({ risk: "critical" })
+    );
   });
 
-  it("sorts by sortField/sortDir", () => {
+  it("passes ordering to fetchSkus when setSort is called", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([]));
     const store = useInventoryStore();
-    store.skus = [
-      makeSku({ sku: "A", risk_score: 5 }),
-      makeSku({ sku: "B", risk_score: 1 }),
-    ];
-    store.sortField = "risk_score";
-    store.sortDir = "asc";
 
-    expect(store.visibleSkus.map((s) => s.sku)).toEqual(["B", "A"]);
+    store.setSort("name");
+    await flushPromises();
+
+    expect(api.fetchSkus).toHaveBeenCalledWith(
+      expect.objectContaining({ ordering: "name" })
+    );
   });
 });
 
@@ -112,11 +118,11 @@ describe("selection", () => {
     const store = useInventoryStore();
 
     store.toggleSelected("SP-1001");
-    expect(store.isSelected("SP-1001")).toBe(true);
+    expect(store.selected.includes("SP-1001")).toBe(true);
     expect(store.selectedCount).toBe(1);
 
     store.toggleSelected("SP-1001");
-    expect(store.isSelected("SP-1001")).toBe(false);
+    expect(store.selected.includes("SP-1001")).toBe(false);
     expect(store.selectedCount).toBe(0);
   });
 
@@ -164,8 +170,15 @@ describe("bulkAct", () => {
     expect(api.bulkUpdateSkuAction).not.toHaveBeenCalled();
   });
 
-  it("updates selected rows and clears selection on success", async () => {
+  it("re-fetches from server and clears selection on success", async () => {
     api.bulkUpdateSkuAction.mockResolvedValue({ updated: 2 });
+    api.fetchSkus.mockResolvedValue(
+      makePageResponse([
+        makeSku({ sku: "A", action_status: "declined" }),
+        makeSku({ sku: "B", action_status: "declined" }),
+        makeSku({ sku: "C", action_status: "pending" }),
+      ])
+    );
     const store = useInventoryStore();
     store.skus = [
       makeSku({ sku: "A", action_status: "pending" }),
