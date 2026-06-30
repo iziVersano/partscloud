@@ -31,6 +31,11 @@ function sortBy(field) {
   store.setSort(field);
 }
 
+function ariaSortFor(field) {
+  if (store.sortField !== field) return "none";
+  return store.sortDir === "asc" ? "ascending" : "descending";
+}
+
 // Select-all operates on the current page, not every filtered row across
 // all pages — selection itself is still tracked globally, so checking
 // boxes on page 1, then page 2, accumulates correctly.
@@ -47,45 +52,56 @@ function toggleSelectAll() {
 <template>
   <div class="table-card">
     <table class="parts-table">
+      <caption class="visually-hidden">
+        Spare parts inventory, sorted by {{ columns.find(c => c.field === store.sortField)?.label }}
+      </caption>
       <thead>
         <tr>
-          <th class="checkbox-col">
+          <th scope="col" class="checkbox-col">
             <input
               type="checkbox"
               :checked="allOnPageSelected"
               @change="toggleSelectAll"
+              aria-label="Select all rows on this page"
             />
           </th>
           <th
             v-for="col in columns"
             :key="col.field"
-            @click="sortBy(col.field)"
+            scope="col"
             class="sortable"
+            tabindex="0"
+            role="button"
+            :aria-sort="ariaSortFor(col.field)"
+            @click="sortBy(col.field)"
+            @keydown.enter="sortBy(col.field)"
+            @keydown.space.prevent="sortBy(col.field)"
           >
             {{ col.label }}
-            <span v-if="store.sortField === col.field" class="sort-arrow">
+            <span v-if="store.sortField === col.field" class="sort-arrow" aria-hidden="true">
               {{ store.sortDir === "asc" ? "▲" : "▼" }}
             </span>
           </th>
-          <th>Action</th>
+          <th scope="col">Action</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in store.skus" :key="row.sku">
-          <td class="checkbox-col">
+          <td class="checkbox-col" data-label="Select">
             <input
               type="checkbox"
               :checked="store.selected.includes(row.sku)"
               @change="onCheckboxChange(row.sku)"
+              :aria-label="`Select ${row.sku}`"
             />
           </td>
-          <td class="mono">{{ row.sku }}</td>
-          <td>{{ row.name }}</td>
-          <td class="muted">{{ row.category }}</td>
-          <td class="mono">{{ row.on_hand }}</td>
-          <td><RiskBadge :risk="row.risk" /></td>
-          <td><StatusIcon :status="row.action_status" /></td>
-          <td class="actions">
+          <td class="mono" data-label="SKU">{{ row.sku }}</td>
+          <td data-label="Name">{{ row.name }}</td>
+          <td class="muted" data-label="Category">{{ row.category }}</td>
+          <td class="mono" data-label="On hand">{{ row.on_hand }}</td>
+          <td data-label="Risk"><RiskBadge :risk="row.risk" /></td>
+          <td data-label="Status"><StatusIcon :status="row.action_status" /></td>
+          <td class="actions" data-label="Action">
             <button
               class="btn accept"
               @click="accept(row.sku)"
@@ -151,6 +167,21 @@ function toggleSelectAll() {
 .parts-table th.sortable:hover {
   color: #374151;
 }
+.parts-table th.sortable:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .sort-arrow {
   font-size: 0.7rem;
 }
@@ -202,5 +233,53 @@ function toggleSelectAll() {
 .btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+@media (max-width: 640px) {
+  .parts-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .parts-table,
+  .parts-table tbody,
+  .parts-table tr {
+    display: block;
+    width: 100%;
+  }
+  .parts-table tbody tr {
+    padding: 0.75rem 0.9rem;
+  }
+  .parts-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.3rem 0;
+    text-align: left;
+  }
+  .parts-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6b7280;
+  }
+  .parts-table td.checkbox-col {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .parts-table td.checkbox-col::before {
+    content: attr(data-label);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #374151;
+    text-transform: none;
+    letter-spacing: normal;
+  }
 }
 </style>

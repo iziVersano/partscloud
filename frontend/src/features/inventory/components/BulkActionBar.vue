@@ -32,6 +32,7 @@ function declineSelected() {
 <style scoped>
 .bulk-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
   padding: 0.7rem 1rem;
@@ -81,5 +82,10 @@ function declineSelected() {
 .clear:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.btn:focus-visible,
+.clear:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 </style>
