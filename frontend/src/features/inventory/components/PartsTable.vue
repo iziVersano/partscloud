@@ -89,16 +89,16 @@ function toggleSelectAll() {
             <button
               class="btn accept"
               @click="accept(row.sku)"
-              :disabled="row.action_status === 'accepted'"
+              :disabled="row.action_status === 'accepted' || store.isPending(row.sku) || store.bulkPending"
             >
-              Accept
+              {{ store.isPending(row.sku) ? "Saving…" : "Accept" }}
             </button>
             <button
               class="btn decline"
               @click="decline(row.sku)"
-              :disabled="row.action_status === 'declined'"
+              :disabled="row.action_status === 'declined' || store.isPending(row.sku) || store.bulkPending"
             >
-              Decline
+              {{ store.isPending(row.sku) ? "Saving…" : "Decline" }}
             </button>
           </td>
         </tr>

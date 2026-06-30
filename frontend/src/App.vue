@@ -25,7 +25,10 @@ onMounted(() => {
       Failed to load: {{ store.error }}
     </p>
     <template v-else>
-      <p v-if="store.actionError" class="action-error">{{ store.actionError }}</p>
+      <p v-if="store.actionError" class="action-error">
+        {{ store.actionError }}
+        <button class="dismiss" @click="store.dismissActionError()">×</button>
+      </p>
       <FilterBar />
       <BulkActionBar />
       <Pagination />
@@ -72,6 +75,10 @@ main {
   color: #991b1b;
 }
 .action-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
@@ -79,5 +86,14 @@ main {
   border-radius: 8px;
   font-size: 0.85rem;
   margin-bottom: 1rem;
+}
+.action-error .dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.2rem;
 }
 </style>
