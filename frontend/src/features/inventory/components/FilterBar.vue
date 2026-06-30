@@ -23,6 +23,7 @@ function select(value) {
         :key="f.label"
         class="filter-btn"
         :class="[f.key, { active: store.riskFilter === f.value }]"
+        :aria-pressed="store.riskFilter === f.value"
         @click="select(f.value)"
       >
         <svg
@@ -47,6 +48,8 @@ function select(value) {
 .filter-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 .filter-group {
@@ -74,6 +77,10 @@ function select(value) {
 }
 .filter-btn:hover {
   color: #111827;
+}
+.filter-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 .filter-btn.active {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);

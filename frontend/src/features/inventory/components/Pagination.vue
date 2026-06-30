@@ -15,7 +15,9 @@ function next() {
 <template>
   <div v-if="store.totalPages > 1" class="pagination">
     <button :disabled="store.page === 1" @click="prev">‹ Prev</button>
-    <span class="page-indicator">Page {{ store.page }} of {{ store.totalPages }}</span>
+    <span class="page-indicator" aria-live="polite">
+      Page {{ store.page }} of {{ store.totalPages }}
+    </span>
     <button :disabled="store.page === store.totalPages" @click="next">Next ›</button>
   </div>
 </template>
