@@ -13,8 +13,8 @@ function declineSelected() {
 </script>
 
 <template>
-  <div v-if="store.selectedCount > 0" class="bulk-bar">
-    <span class="count">
+  <div v-if="store.selectedCount > 0" class="bulk-bar" role="region" aria-label="Bulk actions">
+    <span class="count" aria-live="polite">
       {{ store.bulkPending ? "Working…" : `${store.selectedCount} selected` }}
     </span>
     <button class="btn accept" @click="acceptSelected" :disabled="store.bulkPending">
