@@ -71,7 +71,6 @@ function toggleSelectAll() {
             scope="col"
             class="sortable"
             tabindex="0"
-            role="button"
             :aria-sort="ariaSortFor(col.field)"
             @click="sortBy(col.field)"
             @keydown.enter="sortBy(col.field)"
