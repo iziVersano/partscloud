@@ -1,8 +1,12 @@
+import importlib
+
 from django.test import SimpleTestCase
 
 from apps.inventory.models import SKU
 from apps.inventory.services.risk import compute_risk, compute_risk_score
-from apps.inventory.services.risk_policy import DEFAULT_POLICY, RiskPolicy, get_policy
+from apps.inventory.services.risk_policy import CATEGORY_POLICIES, DEFAULT_POLICY, RiskPolicy, get_policy
+
+_seed_migration = importlib.import_module("apps.inventory.migrations.0002_seed_inventory")
 
 
 class ComputeRiskTests(SimpleTestCase):
@@ -81,3 +85,32 @@ class RiskPolicyTests(SimpleTestCase):
         # (with default it would be WARNING since 3 >= 0 and 3 < safety_stock=8)
         policy = RiskPolicy(critical_threshold=5.0)
         self.assertEqual(compute_risk(23, 2, 10, 8, policy), SKU.RISK_CRITICAL)
+
+
+class SeedMigrationPolicyTests(SimpleTestCase):
+    """
+    The seed migration inlines its own copy of the category multipliers
+    (see that module's docstring for why it can't import risk_policy.py
+    directly). These tests guard against the two copies drifting apart,
+    and confirm the inlined formula actually applies them.
+    """
+
+    def test_seed_multipliers_match_live_policy(self):
+        expected = {
+            category: policy.warning_multiplier
+            for category, policy in CATEGORY_POLICIES.items()
+        }
+        self.assertEqual(_seed_migration._CATEGORY_WARNING_MULTIPLIERS, expected)
+
+    def test_seed_formula_applies_category_multiplier(self):
+        # on_hand=30, demand=2, lead_time=10 -> projected=10, safety_stock=8
+        # default (1.0x): 10 >= 8 -> ok
+        # Bearings (2.0x): 10 < 16 -> warning
+        self.assertEqual(
+            _seed_migration._compute_risk(30, 2, 10, 8, "Unlisted Category"),
+            "ok",
+        )
+        self.assertEqual(
+            _seed_migration._compute_risk(30, 2, 10, 8, "Bearings"),
+            "warning",
+        )

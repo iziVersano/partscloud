@@ -12,6 +12,10 @@ against historical model states, and importing live app code in a
 migration creates a fragile dependency — if the service signature ever
 changes, this historical migration would break. The formula is short
 enough that inlining it is the correct pattern.
+
+Per-category thresholds are inlined too, for the same reason — see
+services/risk_policy.py for the live version and the rationale behind
+each category's multiplier.
 """
 import csv
 from pathlib import Path
@@ -20,15 +24,25 @@ from django.db import migrations
 
 CSV_PATH = Path(__file__).resolve().parent.parent.parent.parent / "data" / "spare_parts_inventory.csv"
 
+# Inlined from services/risk_policy.CATEGORY_POLICIES — see that module's
+# docstring for why each category gets its multiplier. (category -> warning
+# threshold multiplier; critical_threshold is 0.0 for every category so far)
+_CATEGORY_WARNING_MULTIPLIERS = {
+    "Bearings": 2.0,
+    "Drives": 1.5,
+    "Chains": 1.5,
+}
 
-def _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock):
+
+def _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock, category):
     """Inlined from services/risk.py — see module docstring for why."""
     if avg_daily_demand == 0:
         return "ok"
+    warning_multiplier = _CATEGORY_WARNING_MULTIPLIERS.get(category, 1.0)
     projected = on_hand - (avg_daily_demand * lead_time_days)
     if projected < 0:
         return "critical"
-    if projected < safety_stock:
+    if projected < safety_stock * warning_multiplier:
         return "warning"
     return "ok"
 
@@ -56,7 +70,7 @@ def load_csv(apps, schema_editor):
             safety_stock = int(row["safety_stock"])
 
             risk_fields = {
-                "risk": _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock),
+                "risk": _compute_risk(on_hand, avg_daily_demand, lead_time_days, safety_stock, row["category"]),
                 "risk_score": _compute_risk_score(on_hand, avg_daily_demand, lead_time_days, safety_stock),
             }
 
