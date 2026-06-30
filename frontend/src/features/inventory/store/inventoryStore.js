@@ -21,6 +21,8 @@ export const useInventoryStore = defineStore("inventory", {
                     // to the reactivity system and would freeze selectedCount
                     // at 0 and never show the bulk action bar
     page: 1,
+    pendingSkus: [],  // SKUs with an in-flight single accept/decline request
+    bulkPending: false,
   }),
 
   getters: {
@@ -52,18 +54,25 @@ export const useInventoryStore = defineStore("inventory", {
     selectedCount(state) {
       return state.selected.length;
     },
+
+    isPending(state) {
+      return (sku) => state.pendingSkus.includes(sku);
+    },
   },
 
   actions: {
-    async load() {
-      this.loading = true;
+    async load({ silent = false } = {}) {
+      // silent=true skips toggling the global loading flag — used after
+      // accept/decline actions to refresh from the server without
+      // flashing the whole page to a "Loading…" state.
+      if (!silent) this.loading = true;
       this.error = null;
       try {
         this.skus = await fetchSkus({ ordering: "risk_score" });
       } catch (err) {
         this.error = err.message;
       } finally {
-        this.loading = false;
+        if (!silent) this.loading = false;
       }
     },
 
@@ -104,30 +113,50 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     async act(sku, action) {
-      this.actionError = null;
+      // Ignore clicks while a request for this row is already in flight,
+      // instead of firing a second overlapping request.
+      if (this.pendingSkus.includes(sku) || this.bulkPending) return;
+
+      this.pendingSkus.push(sku);
       try {
         const updated = await updateSkuAction(sku, action);
         const index = this.skus.findIndex((s) => s.sku === sku);
         if (index !== -1) this.skus[index] = updated;
+        this.actionError = null;
       } catch (err) {
         this.actionError = `Failed to update ${sku}: ${err.message}`;
+      } finally {
+        const i = this.pendingSkus.indexOf(sku);
+        if (i !== -1) this.pendingSkus.splice(i, 1);
       }
     },
 
     async bulkAct(action) {
+      if (this.bulkPending || this.pendingSkus.length > 0) return;
+
       const skuList = [...this.selected];
       if (skuList.length === 0) return;
 
-      this.actionError = null;
+      this.bulkPending = true;
       try {
-        await bulkUpdateSkuAction(skuList, action);
-        this.skus = this.skus.map((s) =>
-          skuList.includes(s.sku) ? { ...s, action_status: action } : s
-        );
+        const result = await bulkUpdateSkuAction(skuList, action);
+        // Don't trust the request list — re-fetch so the table reflects
+        // what the server actually updated, not what we asked it to.
+        // The bulk endpoint silently skips SKUs it can't find, so
+        // optimistically marking every selected row as updated would lie
+        // about rows that were skipped.
+        await this.load({ silent: true });
         this.clearSelection();
+        this.actionError = result.detail || null;
       } catch (err) {
         this.actionError = `Bulk update failed: ${err.message}`;
+      } finally {
+        this.bulkPending = false;
       }
+    },
+
+    dismissActionError() {
+      this.actionError = null;
     },
   },
 });
