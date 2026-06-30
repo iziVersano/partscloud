@@ -29,9 +29,9 @@ class ListSkusTests(TestCase):
         # assert a total count — we assert our SKU is present.
         make_sku(sku="SP-A")
 
-        response = self.client.get("/api/v1/skus")
+        response = self.client.get("/api/v1/skus?page_size=100")
 
-        skus_in_response = [row["sku"] for row in response.json()]
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
         self.assertEqual(response.status_code, 200)
         self.assertIn("SP-A", skus_in_response)
 
@@ -39,9 +39,9 @@ class ListSkusTests(TestCase):
         make_sku(sku="SP-TEST-CRITICAL", risk=SKU.RISK_CRITICAL)
         make_sku(sku="SP-TEST-OK", risk=SKU.RISK_OK)
 
-        response = self.client.get("/api/v1/skus?risk=critical")
+        response = self.client.get("/api/v1/skus?risk=critical&page_size=100")
 
-        skus_in_response = [row["sku"] for row in response.json()]
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
         self.assertIn("SP-TEST-CRITICAL", skus_in_response)
         self.assertNotIn("SP-TEST-OK", skus_in_response)
 
@@ -59,6 +59,37 @@ class ListSkusTests(TestCase):
     def test_descending_ordering_is_accepted(self):
         response = self.client.get("/api/v1/skus?ordering=-on_hand")
         self.assertEqual(response.status_code, 200)
+
+    def test_pagination_defaults_to_page_size_10(self):
+        for i in range(15):
+            make_sku(sku=f"SP-PAGE-{i}")
+
+        response = self.client.get("/api/v1/skus")
+        body = response.json()
+
+        self.assertEqual(len(body["results"]), 10)
+        self.assertEqual(body["page"], 1)
+        self.assertEqual(body["page_size"], 10)
+        self.assertGreaterEqual(body["total"], 15)
+
+    def test_page_param_returns_next_page(self):
+        for i in range(15):
+            make_sku(sku=f"SP-NEXT-{i}")
+
+        first_page = self.client.get("/api/v1/skus?page_size=10").json()
+        second_page = self.client.get("/api/v1/skus?page=2&page_size=10").json()
+
+        first_skus = {row["sku"] for row in first_page["results"]}
+        second_skus = {row["sku"] for row in second_page["results"]}
+        self.assertEqual(first_skus & second_skus, set())
+
+    def test_page_size_is_capped_at_100(self):
+        response = self.client.get("/api/v1/skus?page_size=500")
+        self.assertEqual(response.json()["page_size"], 100)
+
+    def test_invalid_page_returns_400(self):
+        response = self.client.get("/api/v1/skus?page=not-a-number")
+        self.assertEqual(response.status_code, 400)
 
 
 class SingleActionTests(TestCase):

@@ -1,12 +1,13 @@
 const API_BASE = "/api/v1";
 
-export async function fetchSkus({ risk, ordering } = {}) {
+export async function fetchSkus({ risk, ordering, page = 1, pageSize = 10 } = {}) {
   const params = new URLSearchParams();
   if (risk) params.set("risk", risk);
   if (ordering) params.set("ordering", ordering);
+  params.set("page", page);
+  params.set("page_size", pageSize);
 
-  const query = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(`${API_BASE}/skus${query}`);
+  const response = await fetch(`${API_BASE}/skus?${params.toString()}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch SKUs: ${response.status}`);
   }

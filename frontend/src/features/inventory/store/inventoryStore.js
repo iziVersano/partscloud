@@ -5,50 +5,24 @@ import {
   bulkUpdateSkuAction,
 } from "../api/inventoryApi";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export const useInventoryStore = defineStore("inventory", {
   state: () => ({
     skus: [],
+    total: 0,
+    page: 1,
+    totalPages: 1,
     loading: false,
     error: null,
     actionError: null,
     riskFilter: null,
     sortField: "risk_score",
     sortDir: "asc",
-    selected: [],   // plain array instead of Set — Vue 3 tracks array
-                    // mutations reactively; Set.add()/delete() are invisible
-                    // to the reactivity system and would freeze selectedCount
-                    // at 0 and never show the bulk action bar
-    page: 1,
+    selected: [],
   }),
 
   getters: {
-    visibleSkus(state) {
-      let result = state.riskFilter
-        ? state.skus.filter((s) => s.risk === state.riskFilter)
-        : state.skus;
-
-      const field = state.sortField;
-      const dir = state.sortDir === "desc" ? -1 : 1;
-      result = [...result].sort((a, b) => {
-        if (a[field] < b[field]) return -1 * dir;
-        if (a[field] > b[field]) return 1 * dir;
-        return 0;
-      });
-
-      return result;
-    },
-
-    totalPages(state) {
-      return Math.max(1, Math.ceil(this.visibleSkus.length / PAGE_SIZE));
-    },
-
-    paginatedSkus(state) {
-      const start = (state.page - 1) * PAGE_SIZE;
-      return this.visibleSkus.slice(start, start + PAGE_SIZE);
-    },
-
     selectedCount(state) {
       return state.selected.length;
     },
@@ -59,7 +33,15 @@ export const useInventoryStore = defineStore("inventory", {
       this.loading = true;
       this.error = null;
       try {
-        this.skus = await fetchSkus({ ordering: "risk_score" });
+        const data = await fetchSkus({
+          risk: this.riskFilter,
+          ordering: this.sortDir === "desc" ? `-${this.sortField}` : this.sortField,
+          page: this.page,
+          pageSize: PAGE_SIZE,
+        });
+        this.skus = data.results;
+        this.total = data.total;
+        this.totalPages = data.total_pages;
       } catch (err) {
         this.error = err.message;
       } finally {
@@ -71,6 +53,7 @@ export const useInventoryStore = defineStore("inventory", {
       this.riskFilter = risk;
       this.page = 1;
       this.clearSelection();
+      this.load();
     },
 
     setSort(field) {
@@ -80,23 +63,34 @@ export const useInventoryStore = defineStore("inventory", {
         this.sortField = field;
         this.sortDir = "asc";
       }
+      this.page = 1;
+      this.load();
     },
 
     setPage(page) {
       this.page = Math.min(Math.max(1, page), this.totalPages);
+      this.clearSelection();
+      this.load();
     },
 
     toggleSelected(sku) {
-      const i = this.selected.indexOf(sku);
-      if (i !== -1) {
-        this.selected.splice(i, 1);
-      } else {
-        this.selected.push(sku);
-      }
+      const idx = this.selected.indexOf(sku);
+      if (idx === -1) this.selected.push(sku);
+      else this.selected.splice(idx, 1);
     },
 
-    isSelected(sku) {
-      return this.selected.includes(sku);
+    toggleSelectAll() {
+      const allSelected = this.skus.every((s) => this.selected.includes(s.sku));
+      if (allSelected) {
+        this.skus.forEach((s) => {
+          const idx = this.selected.indexOf(s.sku);
+          if (idx !== -1) this.selected.splice(idx, 1);
+        });
+      } else {
+        this.skus.forEach((s) => {
+          if (!this.selected.includes(s.sku)) this.selected.push(s.sku);
+        });
+      }
     },
 
     clearSelection() {
@@ -115,16 +109,12 @@ export const useInventoryStore = defineStore("inventory", {
     },
 
     async bulkAct(action) {
-      const skuList = [...this.selected];
-      if (skuList.length === 0) return;
-
+      if (this.selected.length === 0) return;
       this.actionError = null;
       try {
-        await bulkUpdateSkuAction(skuList, action);
-        this.skus = this.skus.map((s) =>
-          skuList.includes(s.sku) ? { ...s, action_status: action } : s
-        );
+        await bulkUpdateSkuAction(this.selected, action);
         this.clearSelection();
+        this.load();
       } catch (err) {
         this.actionError = `Bulk update failed: ${err.message}`;
       }

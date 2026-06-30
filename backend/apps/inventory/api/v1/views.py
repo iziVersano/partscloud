@@ -24,6 +24,8 @@ ALLOWED_ORDERING_FIELDS = {
 }
 ALLOWED_RISK_VALUES = {choice[0] for choice in SKU.RISK_CHOICES}
 
+PAGE_SIZE = 10
+
 
 @api_view(["GET"])
 def list_skus(request):
@@ -31,7 +33,9 @@ def list_skus(request):
     GET /api/v1/skus
     Optional query params:
       ?risk=critical            filter by risk level
-      ?ordering=risk_score       sort (prefix with "-" for descending)
+      ?ordering=risk_score      sort (prefix with "-" for descending)
+      ?page=1                   page number (1-based)
+      ?page_size=10             results per page (max 100)
     """
     skus = sku_repository.get_all()
 
@@ -53,8 +57,25 @@ def list_skus(request):
         )
     skus = skus.order_by(ordering)
 
+    total = skus.count()
+
+    try:
+        page = max(1, int(request.query_params.get("page", 1)))
+        page_size = min(100, max(1, int(request.query_params.get("page_size", PAGE_SIZE))))
+    except ValueError:
+        return Response({"detail": "'page' and 'page_size' must be integers"}, status=400)
+
+    offset = (page - 1) * page_size
+    skus = skus[offset: offset + page_size]
+
     serializer = SKUSerializer(skus, many=True)
-    return Response(serializer.data)
+    return Response({
+        "results": serializer.data,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, -(-total // page_size)),
+    })
 
 
 @api_view(["POST"])
