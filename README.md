@@ -2,7 +2,18 @@
 
 Flags spare-part SKUs at risk of running out before the next delivery. Planners can accept or decline per SKU or in bulk.
 
-**Stack:** Django · DRF · SQLite · Vue 3 · Pinia · Docker Compose
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Backend | Django 5 + Django REST Framework |
+| Database | SQLite (file in dev, in-memory in tests) |
+| Frontend | Vue 3 (Composition API) + Pinia |
+| Build | Vite 5 |
+| Tests | pytest-django · Vitest + Vue Test Utils |
+| Infra | Docker Compose |
+
+> Page results are not cached client-side; TanStack Query would be the natural next step for stale-while-revalidate caching per page/filter combination.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/iziVersano/partscloud)
 
