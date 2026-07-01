@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useInventoryStore } from "../store/inventoryStore";
 import RiskBadge from "./RiskBadge.vue";
 import StatusIcon from "./StatusIcon.vue";
@@ -47,6 +47,20 @@ const allOnPageSelected = computed(() =>
 function toggleSelectAll() {
   store.toggleSelectAll();
 }
+
+const dropdownOpen = ref(false);
+
+function selectAll() {
+  store.skus.forEach((row) => {
+    if (!store.selected.includes(row.sku)) store.toggleSelected(row.sku);
+  });
+  dropdownOpen.value = false;
+}
+
+function selectNone() {
+  store.clearSelection();
+  dropdownOpen.value = false;
+}
 </script>
 
 <template>
@@ -58,12 +72,23 @@ function toggleSelectAll() {
       <thead>
         <tr>
           <th scope="col" class="checkbox-col">
-            <input
-              type="checkbox"
-              :checked="allOnPageSelected"
-              @change="toggleSelectAll"
-              aria-label="Select all rows on this page"
-            />
+            <div class="select-all-wrap">
+              <input
+                type="checkbox"
+                :checked="allOnPageSelected"
+                @change="toggleSelectAll"
+                aria-label="Select all rows on this page"
+              />
+              <button
+                class="chevron-btn"
+                @click="dropdownOpen = !dropdownOpen"
+                aria-label="Selection options"
+              >▾</button>
+              <div v-if="dropdownOpen" class="select-dropdown">
+                <button @click="selectAll">All</button>
+                <button @click="selectNone">None</button>
+              </div>
+            </div>
           </th>
           <th
             v-for="col in columns"
@@ -106,6 +131,7 @@ function toggleSelectAll() {
               @click="accept(row.sku)"
               :disabled="row.action_status === 'accepted' || store.isPending(row.sku) || store.bulkPending"
             >
+              <span v-if="store.isPending(row.sku)" class="spinner" aria-hidden="true"></span>
               {{ store.isPending(row.sku) ? "Saving…" : "Accept" }}
             </button>
             <button
@@ -113,6 +139,7 @@ function toggleSelectAll() {
               @click="decline(row.sku)"
               :disabled="row.action_status === 'declined' || store.isPending(row.sku) || store.bulkPending"
             >
+              <span v-if="store.isPending(row.sku)" class="spinner" aria-hidden="true"></span>
               {{ store.isPending(row.sku) ? "Saving…" : "Decline" }}
             </button>
           </td>
@@ -185,7 +212,51 @@ function toggleSelectAll() {
   font-size: 0.7rem;
 }
 .checkbox-col {
-  width: 2.5rem;
+  width: 4rem;
+}
+.select-all-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.chevron-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1;
+}
+.chevron-btn:hover {
+  color: #111827;
+}
+.select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 10;
+  min-width: 80px;
+  overflow: hidden;
+}
+.select-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #111827;
+}
+.select-dropdown button:hover {
+  background: #f3f4f6;
 }
 .parts-table input[type="checkbox"] {
   accent-color: #2563eb;
@@ -212,6 +283,8 @@ function toggleSelectAll() {
   cursor: pointer;
   border: 1px solid transparent;
   margin-right: 0.4rem;
+  min-width: 4.5rem;
+  white-space: nowrap;
 }
 .btn.accept {
   background: #f0fdf4;
@@ -230,8 +303,22 @@ function toggleSelectAll() {
   background: #fee2e2;
 }
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.6;
   cursor: default;
+}
+.spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 640px) {

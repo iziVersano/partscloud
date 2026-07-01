@@ -13,7 +13,7 @@ function declineSelected() {
 </script>
 
 <template>
-  <div v-if="store.selectedCount > 0" class="bulk-bar" role="region" aria-label="Bulk actions">
+  <div class="bulk-bar" :class="{ hidden: store.selectedCount === 0 }" role="region" aria-label="Bulk actions">
     <span class="count" aria-live="polite">
       {{ store.bulkPending ? "Working…" : `${store.selectedCount} selected` }}
     </span>
@@ -30,6 +30,14 @@ function declineSelected() {
 </template>
 
 <style scoped>
+.bulk-bar.hidden {
+  visibility: hidden;
+  padding: 0;
+  border: none;
+  margin: 0;
+  height: 0;
+  overflow: hidden;
+}
 .bulk-bar {
   display: flex;
   flex-wrap: wrap;

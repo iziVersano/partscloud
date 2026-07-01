@@ -1,9 +1,10 @@
 <script setup>
 import { onMounted } from "vue";
 import { useInventoryStore } from "./features/inventory/store/inventoryStore";
+import ErrorBoundary from "./components/ErrorBoundary.vue";
+import ErrorBanner from "./features/inventory/components/ErrorBanner.vue";
 import PartsTable from "./features/inventory/components/PartsTable.vue";
 import FilterBar from "./features/inventory/components/FilterBar.vue";
-import BulkActionBar from "./features/inventory/components/BulkActionBar.vue";
 import Pagination from "./features/inventory/components/Pagination.vue";
 
 const store = useInventoryStore();
@@ -14,28 +15,22 @@ onMounted(() => {
 </script>
 
 <template>
-  <main>
-    <header class="page-header">
-      <h1>PartsCloud</h1>
-      <p class="subtitle">Stockout risk for spare-part inventory</p>
-    </header>
+  <ErrorBoundary>
+    <main>
+      <header class="page-header">
+        <h1>PartsCloud</h1>
+        <p class="subtitle">Stockout risk for spare-part inventory</p>
+      </header>
 
-    <p v-if="store.loading" class="state-message">Loading…</p>
-    <p v-else-if="store.error" class="state-message error">
-      Failed to load: {{ store.error }}
-    </p>
-    <template v-else>
-      <p v-if="store.actionError" class="action-error">
-        {{ store.actionError }}
-        <button class="dismiss" @click="store.dismissActionError()">×</button>
-      </p>
-      <FilterBar />
-      <BulkActionBar />
-      <Pagination />
-      <PartsTable />
-      <Pagination />
-    </template>
-  </main>
+      <ErrorBanner />
+
+      <template v-if="!store.loading && !store.error">
+        <FilterBar />
+        <PartsTable />
+        <Pagination />
+      </template>
+    </main>
+  </ErrorBoundary>
 </template>
 
 <style>
@@ -67,33 +62,5 @@ main {
   margin: 0;
   color: #6b7280;
   font-size: 0.95rem;
-}
-.state-message {
-  color: #6b7280;
-}
-.state-message.error {
-  color: #991b1b;
-}
-.action-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  padding: 0.6rem 0.9rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-.action-error .dismiss {
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 0.2rem;
 }
 </style>

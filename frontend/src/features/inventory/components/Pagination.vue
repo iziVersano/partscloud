@@ -28,7 +28,10 @@ function next() {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: 0.9rem 0;
+  padding: 0.9rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0 0 10px 10px;
 }
 .pagination button {
   padding: 0.4rem 0.9rem;

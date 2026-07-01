@@ -39,4 +39,6 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - CI=true
     command: npm test

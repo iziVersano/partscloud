@@ -40,7 +40,16 @@ function select(value) {
       </button>
     </div>
 
-    <span class="count">{{ store.total }} shown</span>
+    <div v-if="store.selectedCount > 0" class="bulk-inline" role="region" aria-label="Bulk actions">
+      <span class="bulk-count" aria-live="polite">
+        {{ store.bulkPending ? "Working…" : `${store.selectedCount} selected` }}
+      </span>
+      <button class="bulk-btn accept" @click="store.bulkAct('accepted')" :disabled="store.bulkPending">Accept selected</button>
+      <button class="bulk-btn decline" @click="store.bulkAct('declined')" :disabled="store.bulkPending">Decline selected</button>
+      <button class="bulk-clear" @click="store.clearSelection()" :disabled="store.bulkPending">Clear</button>
+    </div>
+
+    <span class="count">{{ store.skus.length }} of {{ store.total }}</span>
   </div>
 </template>
 
@@ -119,6 +128,56 @@ function select(value) {
   color: #166534;
 }
 
+.bulk-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid #d1d5db;
+}
+.bulk-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.bulk-btn {
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.bulk-btn.accept {
+  background: #16a34a;
+  color: white;
+}
+.bulk-btn.accept:hover { background: #15803d; }
+.bulk-btn.decline {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+.bulk-btn.decline:hover { background: #fee2e2; }
+.bulk-clear {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.bulk-btn:disabled,
+.bulk-clear:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.bulk-btn:focus-visible,
+.bulk-clear:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
 .count {
   margin-left: auto;
   color: #6b7280;
