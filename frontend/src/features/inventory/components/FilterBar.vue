@@ -1,5 +1,6 @@
 <script setup>
 import { useInventoryStore } from "../store/inventoryStore";
+import SearchBar from "./SearchBar.vue";
 
 const store = useInventoryStore();
 
@@ -49,6 +50,8 @@ function select(value) {
       <button class="bulk-clear" @click="store.clearSelection()" :disabled="store.bulkPending">Clear</button>
     </div>
 
+    <SearchBar class="search-slot" />
+
     <span class="count">{{ store.skus.length }} of {{ store.total }}</span>
   </div>
 </template>
@@ -58,113 +61,114 @@ function select(value) {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
 }
 .filter-group {
   display: flex;
   gap: 0.4rem;
-  background: #f3f4f6;
+  background: var(--c-surface-2);
   padding: 0.25rem;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 .filter-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.4rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   border: none;
   background: transparent;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 500;
-  color: #4b5563;
+  color: var(--c-ink-soft);
   cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 .filter-btn .dot circle {
   fill: currentColor;
 }
 .filter-btn:hover {
-  color: #111827;
+  color: var(--c-ink);
 }
 .filter-btn:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--c-purple);
   outline-offset: 2px;
 }
 .filter-btn.active {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 /* All: neutral */
 .filter-btn.all.active {
-  background: white;
-  color: #111827;
+  background: var(--c-surface);
+  color: var(--c-ink);
 }
 
 /* Critical: red */
 .filter-btn.critical {
-  color: #b91c1c;
+  color: var(--c-critical);
 }
 .filter-btn.critical.active {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--c-critical-bg);
+  color: var(--c-critical);
 }
 
 /* Warning: amber */
 .filter-btn.warning {
-  color: #b45309;
+  color: var(--c-warning);
 }
 .filter-btn.warning.active {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
 }
 
 /* OK: green */
 .filter-btn.ok {
-  color: #15803d;
+  color: var(--c-ok);
 }
 .filter-btn.ok.active {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--c-ok-bg);
+  color: var(--c-ok);
 }
 
 .bulk-inline {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: 1rem;
-  padding-left: 1rem;
-  border-left: 2px solid #d1d5db;
+  gap: var(--sp-2);
+  margin-left: var(--sp-4);
+  padding-left: var(--sp-4);
+  border-left: 2px solid var(--c-line);
 }
 .bulk-count {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  color: #1e3a8a;
+  color: var(--c-purple-strong);
 }
 .bulk-btn {
   padding: 0.3rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.82rem;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
   font-weight: 500;
   cursor: pointer;
   border: 1px solid transparent;
 }
 .bulk-btn.accept {
-  background: #16a34a;
+  background: var(--c-green);
   color: white;
 }
-.bulk-btn.accept:hover { background: #15803d; }
+.bulk-btn.accept:hover { filter: brightness(0.93); }
 .bulk-btn.decline {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: var(--c-critical-bg);
+  border-color: transparent;
+  color: var(--c-critical);
 }
-.bulk-btn.decline:hover { background: #fee2e2; }
+.bulk-btn.decline:hover { filter: brightness(0.97); }
 .bulk-clear {
   background: none;
   border: none;
-  color: #6b7280;
-  font-size: 0.82rem;
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -175,12 +179,45 @@ function select(value) {
 }
 .bulk-btn:focus-visible,
 .bulk-clear:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--c-purple);
   outline-offset: 2px;
 }
-.count {
+.search-slot {
   margin-left: auto;
-  color: #6b7280;
-  font-size: 0.85rem;
+}
+.count {
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .filter-bar {
+    align-items: stretch;
+  }
+  /* Filter pills scroll horizontally instead of wrapping into stacked rows. */
+  .filter-group {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Search takes its own full-width row below the pills. */
+  .search-slot {
+    margin-left: 0;
+    order: 3;
+    flex-basis: 100%;
+  }
+  .count {
+    order: 2;
+    margin-left: auto;
+    align-self: center;
+  }
+  .bulk-inline {
+    order: 4;
+    flex-basis: 100%;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    flex-wrap: wrap;
+  }
 }
 </style>
