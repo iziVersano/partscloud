@@ -1,0 +1,104 @@
+/*
+ * Design tokens — single source of truth for color, spacing, type, radius.
+ * Palette derived from PartsCloud's PartsOS product UI (purple-led, multi-accent
+ * on a light neutral base). Dark mode overrides only the semantic surface/text
+ * tokens, so components never hard-code a color and theming stays in one place.
+ */
+
+:root {
+  /* Brand accents */
+  --c-purple: #8b5cf6;
+  --c-purple-strong: #7c3aed;
+  --c-blue: #4a7cf6;
+  --c-orange: #f5941f;
+  --c-red: #f2555a;
+  --c-green: #10b981;
+
+  /* Risk semantics */
+  --c-critical: var(--c-red);
+  --c-warning: var(--c-orange);
+  --c-ok: var(--c-green);
+
+  /* Neutral ramp */
+  --c-ink: #1f1f22;
+  --c-ink-soft: #4b5563;
+  --c-muted: #6b7280;
+  --c-line: #e5e7eb;
+  --c-surface: #ffffff;
+  --c-surface-2: #f7f7f8;
+  --c-app-bg: #f2f3f5;
+
+  /* Elevated pill button (PartsOS uses dark pills on light) */
+  --c-pill: #26262b;
+  --c-pill-ink: #ffffff;
+
+  /* Tinted risk backgrounds */
+  --c-critical-bg: #fee2e2;
+  --c-warning-bg: #fef3c7;
+  --c-ok-bg: #dcfce7;
+  --c-purple-bg: #f2ecff;
+
+  /* Spacing scale (4px base) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 2.5rem;
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
+
+  /* Type scale */
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.82rem;
+  --fs-md: 0.92rem;
+  --fs-lg: 1.1rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 180ms;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --c-ink: #f3f4f6;
+  --c-ink-soft: #cbd5e1;
+  --c-muted: #94a3b8;
+  --c-line: #2b2b31;
+  --c-surface: #1c1c20;
+  --c-surface-2: #232329;
+  --c-app-bg: #141417;
+
+  --c-pill: #f3f4f6;
+  --c-pill-ink: #1f1f22;
+
+  --c-critical-bg: #3a1d1f;
+  --c-warning-bg: #3a2e14;
+  --c-ok-bg: #16321f;
+  --c-purple-bg: #2a2140;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}
