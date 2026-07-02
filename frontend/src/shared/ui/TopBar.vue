@@ -1,4 +1,5 @@
 <script setup>
+import { Sun, Moon } from "@lucide/vue";
 import { useTheme } from "../composables/useTheme";
 
 const { theme, toggle } = useTheme();
@@ -24,21 +25,8 @@ const { theme, toggle } = useTheme();
       @click="toggle"
       :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
     >
-      <svg v-if="theme === 'dark'" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2" />
-        <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path d="M12 1v3M12 20v3M23 12h-3M4 12H1M20.5 3.5l-2 2M5.5 18.5l-2 2M20.5 20.5l-2-2M5.5 5.5l-2-2" />
-        </g>
-      </svg>
-      <svg v-else width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-        <path
-          d="M21 12.5A9 9 0 1 1 11.5 3a7 7 0 0 0 9.5 9.5z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linejoin="round"
-        />
-      </svg>
+      <Sun v-if="theme === 'dark'" :size="18" aria-hidden="true" />
+      <Moon v-else :size="18" aria-hidden="true" />
     </button>
   </header>
 </template>
