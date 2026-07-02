@@ -161,6 +161,148 @@ describe("act", () => {
   });
 });
 
+describe("search", () => {
+  it("passes search to fetchSkus, resets to page 1, and clears selection", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([]));
+    const store = useInventoryStore();
+    store.page = 3;
+    store.selected = ["SP-1001"];
+
+    store.setSearch("bearing");
+    await flushPromises();
+
+    expect(store.search).toBe("bearing");
+    expect(store.page).toBe(1);
+    expect(store.selected).toEqual([]);
+    expect(api.fetchSkus).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "bearing" })
+    );
+  });
+});
+
+describe("query cache", () => {
+  it("serves a repeated query from cache without calling the API again", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([makeSku()]));
+    const store = useInventoryStore();
+
+    await store.load();
+    expect(api.fetchSkus).toHaveBeenCalledTimes(1);
+
+    await store.load();
+    expect(api.fetchSkus).toHaveBeenCalledTimes(1);
+    expect(store.skus).toHaveLength(1);
+  });
+
+  it("fetches again when the query key changes", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([]));
+    const store = useInventoryStore();
+
+    await store.load();
+    store.setRiskFilter("critical");
+    await flushPromises();
+
+    expect(api.fetchSkus).toHaveBeenCalledTimes(2);
+  });
+
+  it("bypasses the cache after an accept invalidates it", async () => {
+    api.fetchSkus.mockResolvedValue(makePageResponse([makeSku()]));
+    api.updateSkuAction.mockResolvedValue(makeSku({ action_status: "accepted" }));
+    const store = useInventoryStore();
+
+    await store.load();
+    await store.act("SP-1001", "accepted");
+    await store.load();
+
+    expect(api.fetchSkus).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("loadStats", () => {
+  it("populates stats on success", async () => {
+    api.fetchStats.mockResolvedValue({
+      total: 50,
+      critical: 19,
+      warning: 2,
+      ok: 29,
+      at_risk_value_eur: 29156.26,
+      service_level_pct: 58.0,
+    });
+    const store = useInventoryStore();
+
+    await store.loadStats();
+
+    expect(store.stats.critical).toBe(19);
+    expect(store.stats.service_level_pct).toBe(58.0);
+  });
+
+  it("sets stats to null on failure instead of throwing", async () => {
+    api.fetchStats.mockRejectedValue(new Error("network down"));
+    const store = useInventoryStore();
+
+    await expect(store.loadStats()).resolves.not.toThrow();
+    expect(store.stats).toBeNull();
+  });
+});
+
+describe("SKU drawer", () => {
+  it("openSku/closeSku toggle activeSku", () => {
+    const store = useInventoryStore();
+
+    store.openSku("SP-1001");
+    expect(store.activeSku).toBe("SP-1001");
+
+    store.closeSku();
+    expect(store.activeSku).toBeNull();
+  });
+
+  it("activeSkuRow resolves the full row from the current page", () => {
+    const store = useInventoryStore();
+    store.skus = [makeSku({ sku: "A" }), makeSku({ sku: "B" })];
+
+    store.openSku("B");
+
+    expect(store.activeSkuRow.sku).toBe("B");
+  });
+
+  it("activeSkuRow is null when the active sku isn't on the current page", () => {
+    const store = useInventoryStore();
+    store.skus = [makeSku({ sku: "A" })];
+
+    store.openSku("NOT-ON-PAGE");
+
+    expect(store.activeSkuRow).toBeNull();
+  });
+});
+
+describe("act (optimistic update)", () => {
+  it("reflects the new status immediately, before the request resolves", async () => {
+    let resolveRequest;
+    api.updateSkuAction.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+    const store = useInventoryStore();
+    store.skus = [makeSku({ sku: "SP-1001", action_status: "pending" })];
+
+    const promise = store.act("SP-1001", "accepted");
+    expect(store.skus[0].action_status).toBe("accepted");
+
+    resolveRequest(makeSku({ sku: "SP-1001", action_status: "accepted" }));
+    await promise;
+  });
+
+  it("rolls back to the previous status if the request fails", async () => {
+    api.updateSkuAction.mockRejectedValue(new Error("server error"));
+    const store = useInventoryStore();
+    store.skus = [makeSku({ sku: "SP-1001", action_status: "pending" })];
+
+    await store.act("SP-1001", "accepted");
+
+    expect(store.skus[0].action_status).toBe("pending");
+  });
+});
+
 describe("bulkAct", () => {
   it("does nothing when nothing is selected", async () => {
     const store = useInventoryStore();

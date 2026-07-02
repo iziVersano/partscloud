@@ -38,7 +38,8 @@ Starts backend `:8000`, frontend `:5173`, and runs the test suite. Migrations an
 - **Hardened CSV ingestion** — validates required fields, numeric types, and rejects negative values; bad rows are skipped and reported, not silent failures; `import_skus` management command for re-importing ERP exports
 - **Hardened action flow** — per-row and bulk in-flight state; double-submit blocked before the request fires; bulk actions re-fetch from server instead of optimistic updates; errors surface in a dismissable banner
 - **Accessibility + responsive** — sortable headers keyboard-operable (Enter/Space), `aria-sort`, `aria-pressed` on filters, `aria-live` regions; stacked card layout below 640px
-- **Frontend test layer** — Vitest + Vue Test Utils covering store logic, filtering/sorting, and component interactions (19 tests)
+- **Frontend test layer** — Vitest + Vue Test Utils covering store logic, filtering/sorting, and component interactions (35 tests)
+- **Dashboard elevation** — design-token theme (light/dark), KPI cards (critical count, at-risk €, service level) backed by `GET /api/v1/skus/stats`, debounced search, client-side query cache, and a SKU detail drawer with a derived demand-forecast chart
 
 ---
 
@@ -62,17 +63,17 @@ Zero demand → OK (no stockout risk). Computed once at seed time and stored.
 
 **Backend:** `repositories/` (DB) → `services/` (risk + actions, no ORM) → `api/` (thin DRF views)
 
-**Frontend:** feature-based under `features/inventory/` — components, API, and store co-located.
+**Frontend:** feature-based under `features/inventory/` — components, API, and store co-located. Shared design-system primitives and composables live in `shared/` (`ui/`, `composables/`, `lib/`).
 
 ---
 
 ## Tests
 
 ```
-# Backend (52 tests)
+# Backend (61 tests)
 python manage.py test apps.inventory --settings=partscloud.settings.test
 
-# Frontend (19 tests)
+# Frontend (35 tests)
 cd frontend && npm test
 ```
 

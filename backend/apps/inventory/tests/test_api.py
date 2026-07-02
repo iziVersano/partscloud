@@ -49,6 +49,46 @@ class ListSkusTests(TestCase):
         response = self.client.get("/api/v1/skus?risk=banana")
         self.assertEqual(response.status_code, 400)
 
+    def test_filters_by_comma_separated_risk_values(self):
+        make_sku(sku="SP-TEST-CRIT2", risk=SKU.RISK_CRITICAL)
+        make_sku(sku="SP-TEST-WARN2", risk=SKU.RISK_WARNING)
+        make_sku(sku="SP-TEST-OK2", risk=SKU.RISK_OK)
+
+        response = self.client.get("/api/v1/skus?risk=critical,warning&page_size=100")
+
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
+        self.assertIn("SP-TEST-CRIT2", skus_in_response)
+        self.assertIn("SP-TEST-WARN2", skus_in_response)
+        self.assertNotIn("SP-TEST-OK2", skus_in_response)
+
+    def test_comma_separated_risk_with_one_invalid_value_returns_400(self):
+        response = self.client.get("/api/v1/skus?risk=critical,banana")
+        self.assertEqual(response.status_code, 400)
+
+    def test_search_matches_sku_code(self):
+        make_sku(sku="SP-FINDME", name="Irrelevant name")
+
+        response = self.client.get("/api/v1/skus?search=FINDME&page_size=100")
+
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
+        self.assertIn("SP-FINDME", skus_in_response)
+
+    def test_search_matches_name_case_insensitively(self):
+        make_sku(sku="SP-NAMETEST", name="Special Widget Assembly")
+
+        response = self.client.get("/api/v1/skus?search=widget&page_size=100")
+
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
+        self.assertIn("SP-NAMETEST", skus_in_response)
+
+    def test_search_excludes_non_matching_rows(self):
+        make_sku(sku="SP-EXCLUDE1", name="Totally unrelated part")
+
+        response = self.client.get("/api/v1/skus?search=zzz-no-match-zzz")
+
+        skus_in_response = [row["sku"] for row in response.json()["results"]]
+        self.assertNotIn("SP-EXCLUDE1", skus_in_response)
+
     def test_invalid_ordering_field_returns_400_not_500(self):
         # Without validation, an unknown field name would crash with a
         # raw 500 (Django raises FieldError when the queryset is
@@ -90,6 +130,48 @@ class ListSkusTests(TestCase):
     def test_invalid_page_returns_400(self):
         response = self.client.get("/api/v1/skus?page=not-a-number")
         self.assertEqual(response.status_code, 400)
+
+
+class StatsTests(TestCase):
+    def test_returns_expected_shape(self):
+        response = self.client.get("/api/v1/skus/stats")
+        body = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        for key in ("total", "critical", "warning", "ok", "at_risk_value_eur", "service_level_pct"):
+            self.assertIn(key, body)
+
+    def test_counts_reflect_created_skus(self):
+        before = self.client.get("/api/v1/skus/stats").json()
+
+        make_sku(sku="SP-STATS-CRIT", risk=SKU.RISK_CRITICAL, on_hand=10, unit_cost_eur=5)
+        make_sku(sku="SP-STATS-OK", risk=SKU.RISK_OK)
+
+        after = self.client.get("/api/v1/skus/stats").json()
+
+        self.assertEqual(after["critical"], before["critical"] + 1)
+        self.assertEqual(after["ok"], before["ok"] + 1)
+        self.assertEqual(after["total"], before["total"] + 2)
+
+    def test_at_risk_value_includes_critical_and_warning_only(self):
+        before = self.client.get("/api/v1/skus/stats").json()
+
+        make_sku(sku="SP-STATS-ATRISK", risk=SKU.RISK_CRITICAL, on_hand=10, unit_cost_eur=5)
+        make_sku(sku="SP-STATS-SAFE", risk=SKU.RISK_OK, on_hand=1000, unit_cost_eur=1000)
+
+        after = self.client.get("/api/v1/skus/stats").json()
+
+        # Only the critical SKU's value (10 * 5 = 50) should be added — the OK
+        # SKU, despite being far more valuable, must not count as "at risk".
+        self.assertAlmostEqual(
+            after["at_risk_value_eur"] - before["at_risk_value_eur"], 50.0
+        )
+
+    def test_service_level_is_percentage_of_ok_skus(self):
+        body = self.client.get("/api/v1/skus/stats").json()
+
+        self.assertGreaterEqual(body["service_level_pct"], 0)
+        self.assertLessEqual(body["service_level_pct"], 100)
 
 
 class SingleActionTests(TestCase):
