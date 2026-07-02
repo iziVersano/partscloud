@@ -1,8 +1,17 @@
 <script setup>
-defineProps({
+import { computed } from "vue";
+
+const props = defineProps({
   status: {
     type: String,
     required: true,
+  },
+  // Optional: when a critical SKU is still pending, escalate the label to
+  // "Action needed" instead of a plain "Pending" — nobody has triaged a
+  // stockout risk yet. Purely derived, no separate stored state.
+  risk: {
+    type: String,
+    default: null,
   },
 });
 
@@ -11,10 +20,13 @@ const labels = {
   accepted: "Accepted",
   declined: "Declined",
 };
+
+const isUrgent = computed(() => props.status === "pending" && props.risk === "critical");
+const displayKey = computed(() => (isUrgent.value ? "urgent" : props.status));
 </script>
 
 <template>
-  <span class="status" :class="status">
+  <span class="status" :class="displayKey">
     <svg
       v-if="status === 'accepted'"
       width="14"
@@ -46,6 +58,17 @@ const labels = {
         stroke-linecap="round"
       />
     </svg>
+    <svg v-else-if="isUrgent" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M8 2l7 12H1L8 2z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+      />
+      <path d="M8 6.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      <circle cx="8" cy="11.5" r="0.9" fill="currentColor" />
+    </svg>
     <svg v-else width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
       <circle
         cx="8"
@@ -63,7 +86,7 @@ const labels = {
         stroke-linecap="round"
       />
     </svg>
-    {{ labels[status] || status }}
+    {{ isUrgent ? "Action needed" : labels[status] || status }}
   </span>
 </template>
 
@@ -76,12 +99,16 @@ const labels = {
   font-weight: 500;
 }
 .status.pending {
-  color: #6b7280;
+  color: var(--c-muted);
 }
 .status.accepted {
-  color: #16a34a;
+  color: var(--c-ok);
 }
 .status.declined {
-  color: #dc2626;
+  color: var(--c-critical);
+}
+.status.urgent {
+  color: var(--c-critical);
+  font-weight: 700;
 }
 </style>

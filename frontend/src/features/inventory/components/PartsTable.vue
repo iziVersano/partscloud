@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount } from "vue";
 import { useInventoryStore } from "../store/inventoryStore";
 import RiskBadge from "./RiskBadge.vue";
 import StatusIcon from "./StatusIcon.vue";
+import BaseSkeleton from "../../../shared/ui/BaseSkeleton.vue";
 
 const store = useInventoryStore();
 
@@ -49,6 +50,7 @@ function toggleSelectAll() {
 }
 
 const dropdownOpen = ref(false);
+const selectWrap = ref(null);
 
 function selectAll() {
   store.skus.forEach((row) => {
@@ -61,6 +63,15 @@ function selectNone() {
   store.clearSelection();
   dropdownOpen.value = false;
 }
+
+function onClickOutside(e) {
+  if (dropdownOpen.value && selectWrap.value && !selectWrap.value.contains(e.target)) {
+    dropdownOpen.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener("click", onClickOutside));
+onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
 </script>
 
 <template>
@@ -72,7 +83,7 @@ function selectNone() {
       <thead>
         <tr>
           <th scope="col" class="checkbox-col">
-            <div class="select-all-wrap">
+            <div class="select-all-wrap" ref="selectWrap">
               <input
                 type="checkbox"
                 :checked="allOnPageSelected"
@@ -109,9 +120,27 @@ function selectNone() {
           <th scope="col">Action</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-for="row in store.skus" :key="row.sku">
-          <td class="checkbox-col" data-label="Select">
+      <tbody v-if="store.loading">
+        <tr v-for="n in 10" :key="`sk-${n}`" class="skeleton-row">
+          <td class="checkbox-col"><BaseSkeleton width="16px" height="16px" /></td>
+          <td><BaseSkeleton width="70%" /></td>
+          <td><BaseSkeleton width="90%" /></td>
+          <td><BaseSkeleton width="60%" /></td>
+          <td><BaseSkeleton width="40%" /></td>
+          <td><BaseSkeleton width="55px" height="1.3rem" radius="var(--r-pill)" /></td>
+          <td><BaseSkeleton width="60%" /></td>
+          <td><BaseSkeleton width="80%" /></td>
+        </tr>
+      </tbody>
+
+      <tbody v-else class="row-list">
+        <tr
+          v-for="row in store.skus"
+          :key="row.sku"
+          class="row"
+          @click="store.openSku(row.sku)"
+        >
+          <td class="checkbox-col" data-label="Select" @click.stop>
             <input
               type="checkbox"
               :checked="store.selected.includes(row.sku)"
@@ -124,8 +153,8 @@ function selectNone() {
           <td class="muted" data-label="Category">{{ row.category }}</td>
           <td class="mono" data-label="On hand">{{ row.on_hand }}</td>
           <td data-label="Risk"><RiskBadge :risk="row.risk" /></td>
-          <td data-label="Status"><StatusIcon :status="row.action_status" /></td>
-          <td class="actions" data-label="Action">
+          <td data-label="Status"><StatusIcon :status="row.action_status" :risk="row.risk" /></td>
+          <td class="actions" data-label="Action" @click.stop>
             <button
               class="btn accept"
               @click="accept(row.sku)"
@@ -146,21 +175,33 @@ function selectNone() {
         </tr>
       </tbody>
     </table>
+
+    <div v-if="!store.loading && store.skus.length === 0" class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <p class="empty-state__title">No parts match your filters</p>
+      <p class="empty-state__hint">Try a different risk filter or clear your search.</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .table-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-lg);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
+  /* Reserve height for a full page (header + 10 rows) so a short last page
+     or an emptied filter doesn't collapse the layout and cause a jump. */
+  min-height: 517px;
 }
 .parts-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: var(--fs-md);
 }
 .parts-table th,
 .parts-table td {
@@ -169,32 +210,73 @@ function selectNone() {
   vertical-align: middle;
 }
 .parts-table thead th {
-  background: #f9fafb;
-  font-size: 0.78rem;
+  background: var(--c-surface-2);
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--c-muted);
+  border-bottom: 1px solid var(--c-line);
 }
 .parts-table tbody tr {
-  border-bottom: 1px solid #f1f2f4;
+  border-bottom: 1px solid var(--c-line);
 }
 .parts-table tbody tr:last-child {
   border-bottom: none;
 }
 .parts-table tbody tr:hover {
-  background: #fafbfc;
+  background: var(--c-surface-2);
+}
+.parts-table tbody tr.row {
+  cursor: pointer;
+}
+.skeleton-row td {
+  padding: 0.8rem 0.9rem;
+}
+
+/* Rows fade in on filter/sort/paginate. Plain keyframes rather than
+   TransitionGroup: Vue's move animation applies position:absolute to
+   leaving elements, which breaks <tr> layout inside a <table>. */
+.row-list .row {
+  animation: row-fade-in var(--dur) var(--ease);
+}
+@keyframes row-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-7) var(--sp-4);
+  color: var(--c-muted);
+  text-align: center;
+}
+.empty-state__title {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--c-ink-soft);
+}
+.empty-state__hint {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
 }
 .parts-table th.sortable {
   cursor: pointer;
   user-select: none;
 }
 .parts-table th.sortable:hover {
-  color: #374151;
+  color: var(--c-ink-soft);
 }
 .parts-table th.sortable:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--c-purple);
   outline-offset: -2px;
 }
 .visually-hidden {
@@ -226,20 +308,20 @@ function selectNone() {
   padding: 0 2px;
   cursor: pointer;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--c-muted);
   line-height: 1;
 }
 .chevron-btn:hover {
-  color: #111827;
+  color: var(--c-ink);
 }
 .select-dropdown {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-md);
   z-index: 10;
   min-width: 80px;
   overflow: hidden;
@@ -251,15 +333,15 @@ function selectNone() {
   background: none;
   border: none;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
-  color: #111827;
+  color: var(--c-ink);
 }
 .select-dropdown button:hover {
-  background: #f3f4f6;
+  background: var(--c-surface-2);
 }
 .parts-table input[type="checkbox"] {
-  accent-color: #2563eb;
+  accent-color: var(--c-purple);
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -267,10 +349,10 @@ function selectNone() {
 .mono {
   font-family: "SF Mono", "Roboto Mono", Consolas, monospace;
   font-size: 0.88rem;
-  color: #374151;
+  color: var(--c-ink-soft);
 }
 .muted {
-  color: #6b7280;
+  color: var(--c-muted);
 }
 .actions {
   white-space: nowrap;
@@ -287,20 +369,20 @@ function selectNone() {
   white-space: nowrap;
 }
 .btn.accept {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: var(--c-ok-bg);
+  border-color: transparent;
+  color: var(--c-ok);
 }
 .btn.accept:hover:not(:disabled) {
-  background: #dcfce7;
+  filter: brightness(0.97);
 }
 .btn.decline {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: var(--c-critical-bg);
+  border-color: transparent;
+  color: var(--c-critical);
 }
 .btn.decline:hover:not(:disabled) {
-  background: #fee2e2;
+  filter: brightness(0.97);
 }
 .btn:disabled {
   opacity: 0.6;
@@ -348,22 +430,22 @@ function selectNone() {
   .parts-table td[data-label]::before {
     content: attr(data-label);
     display: block;
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: #6b7280;
+    color: var(--c-muted);
   }
   .parts-table td.checkbox-col {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--sp-2);
   }
   .parts-table td.checkbox-col::before {
     content: attr(data-label);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
     font-weight: 500;
-    color: #374151;
+    color: var(--c-ink-soft);
     text-transform: none;
     letter-spacing: normal;
   }

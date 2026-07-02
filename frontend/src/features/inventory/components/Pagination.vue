@@ -14,11 +14,12 @@ function next() {
 
 <template>
   <div v-if="store.totalPages > 1" class="pagination">
-    <button :disabled="store.page === 1" @click="prev">‹ Prev</button>
+    <button :disabled="store.page === 1 || store.loading" @click="prev">‹ Prev</button>
     <span class="page-indicator" aria-live="polite">
+      <span v-if="store.loading" class="page-spinner" aria-hidden="true" />
       Page {{ store.page }} of {{ store.totalPages }}
     </span>
-    <button :disabled="store.page === store.totalPages" @click="next">Next ›</button>
+    <button :disabled="store.page === store.totalPages || store.loading" @click="next">Next ›</button>
   </div>
 </template>
 
@@ -27,30 +28,47 @@ function next() {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: var(--sp-4);
   padding: 0.9rem 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 0 0 10px 10px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
 }
 .pagination button {
   padding: 0.4rem 0.9rem;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: white;
-  font-size: 0.85rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-line);
+  background: var(--c-surface);
+  font-size: var(--fs-sm);
   cursor: pointer;
-  color: #374151;
+  color: var(--c-ink-soft);
 }
 .pagination button:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--c-surface-2);
 }
 .pagination button:disabled {
   opacity: 0.4;
   cursor: default;
 }
 .page-indicator {
-  font-size: 0.85rem;
-  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--c-muted);
+}
+.page-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: page-spin 0.6s linear infinite;
+}
+@keyframes page-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
