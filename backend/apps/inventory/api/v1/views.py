@@ -9,13 +9,14 @@ with a message a frontend can show. Anything not caught here is a
 genuine bug and should surface as a 500, not be silently mapped to a
 misleading 404 — see update_sku_action below for why this matters.
 """
+from django.db.models import Q
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.inventory.models import SKU
 from apps.inventory.repositories import sku_repository
 from apps.inventory.serializers import SKUSerializer
-from apps.inventory.services import actions
+from apps.inventory.services import actions, stats
 from apps.inventory.services.actions import InvalidActionError
 
 ALLOWED_ORDERING_FIELDS = {
@@ -32,7 +33,7 @@ def list_skus(request):
     """
     GET /api/v1/skus
     Optional query params:
-      ?risk=critical            filter by risk level
+      ?risk=critical            filter by risk level (comma-separated for multiple, e.g. critical,warning)
       ?ordering=risk_score      sort (prefix with "-" for descending)
       ?page=1                   page number (1-based)
       ?page_size=10             results per page (max 100)
@@ -41,12 +42,18 @@ def list_skus(request):
 
     risk = request.query_params.get("risk")
     if risk:
-        if risk not in ALLOWED_RISK_VALUES:
+        risk_values = risk.split(",")
+        invalid = [r for r in risk_values if r not in ALLOWED_RISK_VALUES]
+        if invalid:
             return Response(
                 {"detail": f"'risk' must be one of {sorted(ALLOWED_RISK_VALUES)}"},
                 status=400,
             )
-        skus = skus.filter(risk=risk)
+        skus = skus.filter(risk__in=risk_values)
+
+    search = request.query_params.get("search", "").strip()
+    if search:
+        skus = skus.filter(Q(sku__icontains=search) | Q(name__icontains=search))
 
     ordering = request.query_params.get("ordering", "risk_score")
     ordering_field = ordering.lstrip("-")
@@ -76,6 +83,17 @@ def list_skus(request):
         "page_size": page_size,
         "total_pages": max(1, -(-total // page_size)),
     })
+
+
+@api_view(["GET"])
+def sku_stats(request):
+    """
+    GET /api/v1/skus/stats
+    Aggregate summary for the dashboard KPI cards: risk counts,
+    at-risk inventory value, and service level — computed across all
+    SKUs, not just the current page.
+    """
+    return Response(stats.compute_summary())
 
 
 @api_view(["POST"])
