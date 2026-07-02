@@ -1,9 +1,11 @@
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
+import { SearchX, Check, X as XIcon } from "@lucide/vue";
 import { useInventoryStore } from "../store/inventoryStore";
 import RiskBadge from "./RiskBadge.vue";
 import StatusIcon from "./StatusIcon.vue";
 import BaseSkeleton from "../../../shared/ui/BaseSkeleton.vue";
+import CategoryIcon from "./CategoryIcon.vue";
 
 const store = useInventoryStore();
 
@@ -150,7 +152,9 @@ onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
           </td>
           <td class="mono" data-label="SKU">{{ row.sku }}</td>
           <td data-label="Name">{{ row.name }}</td>
-          <td class="muted" data-label="Category">{{ row.category }}</td>
+          <td class="muted" data-label="Category">
+            <CategoryIcon :category="row.category" />{{ row.category }}
+          </td>
           <td class="mono" data-label="On hand">{{ row.on_hand }}</td>
           <td data-label="Risk"><RiskBadge :risk="row.risk" /></td>
           <td data-label="Status"><StatusIcon :status="row.action_status" :risk="row.risk" /></td>
@@ -161,6 +165,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
               :disabled="row.action_status === 'accepted' || store.isPending(row.sku) || store.bulkPending"
             >
               <span v-if="store.isPending(row.sku)" class="spinner" aria-hidden="true"></span>
+              <Check v-else :size="14" aria-hidden="true" />
               {{ store.isPending(row.sku) ? "Saving…" : "Accept" }}
             </button>
             <button
@@ -169,6 +174,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
               :disabled="row.action_status === 'declined' || store.isPending(row.sku) || store.bulkPending"
             >
               <span v-if="store.isPending(row.sku)" class="spinner" aria-hidden="true"></span>
+              <XIcon v-else :size="14" aria-hidden="true" />
               {{ store.isPending(row.sku) ? "Saving…" : "Decline" }}
             </button>
           </td>
@@ -177,10 +183,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
     </table>
 
     <div v-if="!store.loading && store.skus.length === 0" class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
-        <path d="M16 16l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
+      <SearchX :size="40" aria-hidden="true" />
       <p class="empty-state__title">No parts match your filters</p>
       <p class="empty-state__hint">Try a different risk filter or clear your search.</p>
     </div>
@@ -358,6 +361,10 @@ onBeforeUnmount(() => document.removeEventListener("click", onClickOutside));
   white-space: nowrap;
 }
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
   padding: 0.35rem 0.75rem;
   border-radius: 6px;
   font-size: 0.82rem;

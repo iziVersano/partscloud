@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { TriangleAlert, Wallet, ShieldCheck } from "@lucide/vue";
 import { useInventoryStore } from "../store/inventoryStore";
 import { formatEur } from "../../../shared/lib/format";
 import BaseCard from "../../../shared/ui/BaseCard.vue";
@@ -19,6 +20,7 @@ const cards = computed(() => {
       filter: "critical",
       clickable: true,
       hint: "Below zero projected cover",
+      icon: TriangleAlert,
     },
     {
       key: "at-risk",
@@ -28,6 +30,7 @@ const cards = computed(() => {
       filter: "critical,warning",
       clickable: true,
       hint: "Capital exposed to stockout — click to view",
+      icon: Wallet,
     },
     {
       key: "service-level",
@@ -37,6 +40,7 @@ const cards = computed(() => {
       filter: "ok",
       clickable: true,
       hint: "SKUs not at risk",
+      icon: ShieldCheck,
     },
   ];
 });
@@ -63,7 +67,10 @@ function activate(card) {
         @keydown.enter="activate(card)"
         @keydown.space.prevent="activate(card)"
       >
-        <p class="stat-card__label">{{ card.label }}</p>
+        <div class="stat-card__top">
+          <p class="stat-card__label">{{ card.label }}</p>
+          <component :is="card.icon" class="stat-card__icon" :class="`stat-card__icon--${card.accent}`" :size="18" aria-hidden="true" />
+        </div>
         <p class="stat-card__value" :class="`stat-card__value--${card.accent}`">
           {{ card.value }}
         </p>
@@ -100,11 +107,29 @@ function activate(card) {
   outline: 2px solid var(--c-purple);
   outline-offset: 2px;
 }
+.stat-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
 .stat-card__label {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--c-muted);
   font-weight: 500;
+}
+.stat-card__icon {
+  flex-shrink: 0;
+}
+.stat-card__icon--critical {
+  color: var(--c-critical);
+}
+.stat-card__icon--warning {
+  color: var(--c-warning);
+}
+.stat-card__icon--ok {
+  color: var(--c-ok);
 }
 .stat-card__value {
   margin: 0.4rem 0 0.3rem;
